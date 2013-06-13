@@ -24,11 +24,24 @@ let do_bindings elem (path : string option) (env : env) : env =
   List.fold_left process env (elem.Qdom.child_nodes)
 ;;
 
+type importance = Essential | Recommended;;
+
+let importance dep = match Qdom.get_attribute_opt ("", "importance") dep with
+  | Some "essential" | None -> Essential
+  | Some "recommended" -> Recommended
+  | Some _ -> Recommended
+;;
+
 let prepare_env stores selections env : string list =
   let do_dep (env : env) dep : env = (
     let dep_iface = Qdom.get_attribute ("", "interface") dep in
-    let dep_sel = Selections.get dep_iface selections in   (* todo: Recommended *)
-    do_bindings dep (Selections.get_path stores dep_sel) env
+    let dep_sel_opt = match importance dep with
+      | Essential -> Some (Selections.get dep_iface selections)
+      | Recommended -> Selections.get_opt dep_iface selections
+    in
+    match dep_sel_opt with
+    | None -> env
+    | Some dep_sel -> do_bindings dep (Selections.get_path stores dep_sel) env
   ) in
 
   let do_deps elem (env : env): env = List.fold_left do_dep env (Selections.get_deps elem) in

@@ -53,6 +53,11 @@ let get interface sels =
   with Not_found -> failwith ("Interface '" ^ interface ^ "' not in selections")
 ;;
 
+let get_opt interface sels =
+  try Some (StringMap.find interface sels.selections)
+  with Not_found -> None
+;;
+
 let get_digests elem =
   (* todo: ID *)
   let check_attr init ((ns, name), value) = match ns with
