@@ -11,7 +11,11 @@ type source =
   | Value of string
 ;;
 
-type binding = EnvironmentBinding of (string * mode * source);;
+type exec_type = InPath | InVar;;
+
+type binding =
+| EnvironmentBinding of (string * mode * source)
+| ExecutableBinding of (exec_type * string * string);;  (* name, command *)
 
 let get_source b =
   let get name = Qdom.get_attribute_opt ("", name) b in
@@ -32,11 +36,13 @@ let get_mode b =
 ;;
 
 let parse_binding elem =
+  let get_opt name = Qdom.get_attribute_opt ("", name) elem in
   let get name = Qdom.get_attribute ("", name) elem in
   match elem.Qdom.tag with
   | (xmlns_feed, "environment") -> Some (EnvironmentBinding (get "name", get_mode elem, get_source elem))
-  | (xmlns_feed, "executable-in-path") | (xmlns_feed, "executable-in-var") | (xmlns_feed, "overlay") | (xmlns_feed, "binding") ->
-      failwith "unsupporting binding type"
+  | (xmlns_feed, "executable-in-path") -> Some (ExecutableBinding (InPath, get "name", default "run" (get_opt "command")))
+  | (xmlns_feed, "executable-in-var") -> Some (ExecutableBinding (InVar, get "name", default "run" (get_opt "command")))
+  | (xmlns_feed, "overlay") | (xmlns_feed, "binding") -> failwith "unsupporting binding type"
   | _ -> None
 ;;
 
@@ -74,6 +80,16 @@ let calc_new_value name mode value env =
       | Append -> old ^ sep ^ value
 ;;
 
+let putenv name value env = (
+  Printf.printf "Adding: %s=%s\n" name value;
+  (name ^ "=" ^ value) :: env
+);;
+
+let prepend name value sep env =
+  let old_value = getenv name env in
+  putenv name (value ^ sep ^ old_value) env
+;;
+
 let do_env_binding b path env = match b with
 | EnvironmentBinding (name, mode, source) -> (
     let value = match source with
@@ -86,9 +102,7 @@ let do_env_binding b path env = match b with
     in
     match value with
     | None -> env     (* Nothing to bind *)
-    | Some v ->
-        let new_value = calc_new_value name mode v env in
-        Printf.printf "%s=%s" name new_value;
-        (name ^ "=" ^ new_value) :: env
+    | Some v -> putenv name (calc_new_value name mode v env) env
 )
+| _ -> failwith "Not an environment binding"
 ;;

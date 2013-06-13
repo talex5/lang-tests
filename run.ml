@@ -1,25 +1,66 @@
 open Constants;;
 open Support;;
 
-let do_bindings sel (path : string option) (env : string list) =
-  let process env child : string list = match Binding.parse_binding child with
-  | None -> env
-  | Some (Binding.EnvironmentBinding _ as b) -> Binding.do_env_binding b path env
-  in
-  let elem = Selections.get_elem sel in
+type exec_binding = (string * Binding.exec_type * string * string);;  (* iface_uri, exec_type, name, command *)
+
+type env = (string list * exec_binding list);;
+
+let re_exec_name = Str.regexp "^[^./'][^/']*$";;
+
+let validate_exec_name name =
+  if Str.string_match re_exec_name name 0 then
+    ()
+  else
+    failwith ("Invalid name in executable binding: " ^ name)
+
+let do_bindings elem (path : string option) (env : env) : env =
+  let process env child : env =
+    let (vars, bindings) = env in
+    match Binding.parse_binding child with
+    | None -> env
+    | Some (Binding.ExecutableBinding (exec_type, name, command)) -> (vars, ("URI", exec_type, name, command) :: bindings)
+    | Some (Binding.EnvironmentBinding _ as b) -> (Binding.do_env_binding b path vars, bindings)
+    in
   List.fold_left process env (elem.Qdom.child_nodes)
 ;;
 
-let prepare_env stores selections (env : string list) =
-  let get_path = function
-    | Selections.CacheSelection _ as sel -> Some (Selections.get_path stores sel)
-    | Selections.LocalSelection (path, _) -> Some path
-    | Selections.PackageSelection _ -> None in
+let prepare_env stores selections env : string list =
+  let do_dep (env : env) dep : env = (
+    let dep_iface = Qdom.get_attribute ("", "interface") dep in
+    let dep_sel = Selections.get dep_iface selections in   (* todo: Recommended *)
+    do_bindings dep (Selections.get_path stores dep_sel) env
+  ) in
+
+  let do_deps elem (env : env): env = List.fold_left do_dep env (Selections.get_deps elem) in
+
   let process_sel id sel env = (
-    do_bindings sel (get_path sel) env
-    (* do deps *)
-    (* do commands *)
-  ) in Selections.StringMap.fold process_sel selections.Selections.selections env
+    let process_command env c = (
+      let elem = (Command.get_elem c) in
+      let env = do_bindings elem (Selections.get_path stores sel) env in
+      do_deps elem env
+    ) in
+    let elem = Selections.get_elem sel in
+    let env = do_bindings elem (Selections.get_path stores sel) env in
+    let env = do_deps elem env in
+    List.fold_left process_command env (Selections.get_commands sel)
+  ) in
+  
+  let (vars, exec_bindings) = Selections.StringMap.fold process_sel selections.Selections.selections env in
+
+  let do_exec_binding vars (iface_uri, exec_type, name, command) = (
+    validate_exec_name name;
+
+    (* todo: setup symlinks *)
+    let exec_dir = "/home/tal/.cache/0install.net/injector/executables/" ^ name in
+    let exec_path = exec_dir ^ Filename.dir_sep ^ name in
+
+    match exec_type with
+    | Binding.InPath -> Binding.prepend "PATH" exec_dir path_sep vars
+    | Binding.InVar -> Binding.putenv name exec_path vars
+  ) in
+
+  (* Do delayed executable bindings, now that all environment variables have been set *)
+  List.fold_left do_exec_binding vars exec_bindings
 ;;
 
 let re_id = "\\([a-zA-Z_][a-zA-Z0-9_]*\\)"
@@ -73,12 +114,12 @@ let build_command stores selections env =
     let args = (match Command.get_path command with
       | None -> command_args
       | Some command_rel_path ->
-        let command_path = match command_sel with
-          | Selections.CacheSelection _ -> Filename.concat (Selections.get_path stores command_sel) command_rel_path
-          | Selections.LocalSelection (path, _) -> Filename.concat path command_rel_path
-          | Selections.PackageSelection _ -> command_rel_path
-        in
-          command_path :: command_args
+          let command_path =
+            match Selections.get_path stores command_sel with
+            | None -> command_rel_path      (* PackageSelection *)
+            | Some dir -> Filename.concat dir command_rel_path
+          in
+            command_path :: command_args
     ) in
 
     (* recursively process our runner, if any *)
@@ -91,7 +132,9 @@ let build_command stores selections env =
 ;;
 
 let execute_selections (sels:Selections.selections) (args:string list) stores =
-  let original_env = Array.to_list (Unix.environment ()) in
+  let original_env = (Array.to_list (Unix.environment ()), []) in
   let env = prepare_env stores sels original_env in
   let prog_args = build_command stores sels env @ args in
+  flush stdout;
+  flush stderr;
   Unix.execve (List.hd prog_args) (Array.of_list prog_args) (Array.of_list env);;
