@@ -8,10 +8,11 @@ open Support;;
 
 let re_path_sep = Str.regexp_string path_sep;;
 
-let home =
-  try Sys.getenv "HOME"
-  with Not_found -> "/"
-;;
+type config = {
+  data: string list;
+  cache: string list;
+  config: string list;
+};;
 
 let get_path home_var dirs_var = function
   | [] -> failwith "No defaults!"
@@ -25,14 +26,13 @@ let get_path home_var dirs_var = function
     user_dir :: system_dirs
 ;;
 
-let xdg_data_dirs = get_path "XDG_DATA_HOME" "XDG_DATA_DIRS"
-  [home +/ ".local/share"; "/usr/local/share"; "/usr/share"];;
-
-let xdg_cache_dirs = get_path "XDG_CACHE_HOME" "XDG_CACHE_DIRS"
-  [home +/ ".cache"; "/var/cache"];;
-
-let xdg_config_dirs = get_path "XDG_CONFIG_HOME" "XDG_CONFIG_DIRS"
-  [home +/ ".config"; "/etc/xdg"];;
+let get_default_config () =
+  let home = try Sys.getenv "HOME" with Not_found -> "/" in {
+    data = get_path "XDG_DATA_HOME" "XDG_DATA_DIRS" [home +/ ".local/share"; "/usr/local/share"; "/usr/share"];
+    cache = get_path "XDG_CACHE_HOME" "XDG_CACHE_DIRS" [home +/ ".cache"; "/var/cache"];
+    config = get_path "XDG_CONFIG_HOME" "XDG_CONFIG_DIRS" [home +/ ".config"; "/etc/xdg"];
+  }
+;;
 
 let load_first resource search_path =
   let rel_path = String.concat Filename.dir_sep resource in
@@ -44,4 +44,4 @@ let load_first resource search_path =
   in loop search_path
 ;;
 
-let load_first_config resource = load_first resource xdg_config_dirs;;
+let load_first_config resource config = load_first resource config.config;;

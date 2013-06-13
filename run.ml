@@ -32,7 +32,7 @@ let importance dep = match Qdom.get_attribute_opt ("", "importance") dep with
   | Some _ -> Recommended
 ;;
 
-let prepare_env stores selections env : string list =
+let prepare_env config selections env : string list =
   let do_dep (env : env) dep : env = (
     let dep_iface = Qdom.get_attribute ("", "interface") dep in
     let dep_sel_opt = match importance dep with
@@ -41,7 +41,7 @@ let prepare_env stores selections env : string list =
     in
     match dep_sel_opt with
     | None -> env
-    | Some dep_sel -> do_bindings dep (Selections.get_path stores dep_sel) env
+    | Some dep_sel -> do_bindings dep (Selections.get_path config.Config.stores dep_sel) env
   ) in
 
   let do_deps elem (env : env): env = List.fold_left do_dep env (Selections.get_deps elem) in
@@ -49,11 +49,11 @@ let prepare_env stores selections env : string list =
   let process_sel id sel env = (
     let process_command env c = (
       let elem = (Command.get_elem c) in
-      let env = do_bindings elem (Selections.get_path stores sel) env in
+      let env = do_bindings elem (Selections.get_path config.Config.stores sel) env in
       do_deps elem env
     ) in
     let elem = Selections.get_elem sel in
-    let env = do_bindings elem (Selections.get_path stores sel) env in
+    let env = do_bindings elem (Selections.get_path config.Config.stores sel) env in
     let env = do_deps elem env in
     List.fold_left process_command env (Selections.get_commands sel)
   ) in
@@ -64,7 +64,7 @@ let prepare_env stores selections env : string list =
     validate_exec_name name;
 
     (* todo: setup symlinks *)
-    let exec_dir = (List.hd Basedir.xdg_cache_dirs) +/ "0install.net" +/ "injector" +/ "executables" +/ name in
+    let exec_dir = (List.hd config.Config.basedirs.Basedir.cache) +/ "0install.net" +/ "injector" +/ "executables" +/ name in
     let exec_path = exec_dir ^ Filename.dir_sep ^ name in
 
     match exec_type with
@@ -144,10 +144,10 @@ let build_command stores selections env =
   ) in do_command selections.Selections.interface (expect (selections.Selections.command) "No command specified")
 ;;
 
-let execute_selections (sels:Selections.selections) (args:string list) stores =
+let execute_selections (sels:Selections.selections) (args:string list) config =
   let original_env = (Array.to_list (Unix.environment ()), []) in
-  let env = prepare_env stores sels original_env in
-  let prog_args = build_command stores sels env @ args in
+  let env = prepare_env config sels original_env in
+  let prog_args = build_command config.Config.stores sels env @ args in
   flush stdout;
   flush stderr;
   Unix.execve (List.hd prog_args) (Array.of_list prog_args) (Array.of_list env);;
