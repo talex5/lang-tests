@@ -28,3 +28,7 @@ let lookup_any digests stores =
       let str_digests = String.concat ", " (List.map format_digest digests) in
       let str_stores = String.concat ", " stores in
       raise (Not_stored ("Item with digests " ^ str_digests ^ " not found in stores. Searched " ^ str_stores));;
+
+let default_stores =
+  List.map (fun prefix -> prefix +/ "0install.net" +/ "implementations") Basedir.xdg_cache_dirs
+;;

@@ -50,3 +50,5 @@ let getenv name env = match getenv_opt name env with
   | Some x -> x
   | None -> failwith ("Variable '" ^ name ^ "' not set")
 ;;
+
+let (+/) = Filename.concat;;

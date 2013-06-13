@@ -64,7 +64,7 @@ let prepare_env stores selections env : string list =
     validate_exec_name name;
 
     (* todo: setup symlinks *)
-    let exec_dir = "/home/tal/.cache/0install.net/injector/executables/" ^ name in
+    let exec_dir = (List.hd Basedir.xdg_cache_dirs) +/ "0install.net" +/ "injector" +/ "executables" +/ name in
     let exec_path = exec_dir ^ Filename.dir_sep ^ name in
 
     match exec_type with
