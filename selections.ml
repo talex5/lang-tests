@@ -86,7 +86,10 @@ let get_commands (impl_source, elem) =
 let get_command name sel =
   let elem = get_elem sel in
   let is_command node = ((node.Qdom.tag = (xmlns_feed, "command")) && (Qdom.get_attribute ("", "name") node = name)) in
-  let command_elem = Qdom.find is_command elem in
+  let command_elem =
+    try Qdom.find is_command elem
+    with Not_found -> failwith ("No <command> with name '" ^ name ^ "'")
+  in
   Command.make command_elem;;
 
 let get_deps elem =

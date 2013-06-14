@@ -66,7 +66,7 @@ let calc_new_value name mode value env =
   | Replace -> value
   | Add {pos; default; separator} ->
     (* Find the value to join it with *)
-    let old_value = (match getenv_opt name env with
+    let old_value = (match Env.find_opt name env with
       | Some _ as v -> v                  (* current value of variable *)
       | None -> (match default with
         | Some _ as d -> d                (* or the specified default *)
@@ -81,14 +81,9 @@ let calc_new_value name mode value env =
       | Append -> old ^ separator ^ value
 ;;
 
-let putenv name value env = (
-  Printf.printf "Adding: %s=%s\n" name value;
-  (name ^ "=" ^ value) :: env
-);;
-
 let prepend name value sep env =
-  let old_value = getenv name env in
-  putenv name (value ^ sep ^ old_value) env
+  let old_value = Env.find name env in
+  Env.putenv name (value ^ sep ^ old_value) env
 ;;
 
 let do_env_binding b path env = match b with
@@ -103,7 +98,7 @@ let do_env_binding b path env = match b with
     in
     match value with
     | None -> env     (* Nothing to bind *)
-    | Some v -> putenv name (calc_new_value name mode v env) env
+    | Some v -> Env.putenv name (calc_new_value name mode v env) env
 )
 | _ -> failwith "Not an environment binding"
 ;;

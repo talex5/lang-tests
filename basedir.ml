@@ -44,4 +44,15 @@ let load_first resource search_path =
   in loop search_path
 ;;
 
+let save_path rel_path dirs =
+  let save_dir = List.hd dirs in
+  let path = save_dir +/ rel_path in
+  if not (Sys.file_exists path) then
+    makedirs path 0o700
+  else ();
+  path
+;;
+
+let save_cache_path rel_path config = save_path rel_path config.cache;;
+
 let load_first_config resource config = load_first resource config.config;;

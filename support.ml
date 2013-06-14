@@ -33,6 +33,7 @@ let path_sep = if Filename.dir_sep = "/" then ":" else ";";;
 
 (* Look up an environment variable in an array from Unix.environment.
    Maybe we should convert it to a Map instead? *)
+(*
 let getenv_opt name env =
   let prefix = name ^ "=" in
   let rec loop = function
@@ -50,5 +51,27 @@ let getenv name env = match getenv_opt name env with
   | Some x -> x
   | None -> failwith ("Variable '" ^ name ^ "' not set")
 ;;
+*)
 
 let (+/) = Filename.concat;;
+
+let rec makedirs path mode =
+  try (
+    match (Unix.lstat path).Unix.st_kind with
+    | Unix.S_DIR -> ()
+    | _ -> failwith ("Not a directory: " ^ path)
+  ) with Unix.Unix_error _ -> (
+    let parent = (Filename.dirname path) in
+    assert (path <> parent);
+    makedirs parent mode;
+    Unix.mkdir path mode
+  )
+;;
+
+let abspath path =
+  let old_cwd = Sys.getcwd () in
+  Sys.chdir (Filename.dirname path);
+  let new_cwd = Sys.getcwd () in
+  Sys.chdir old_cwd;
+  new_cwd +/ (Filename.basename path)
+;;
