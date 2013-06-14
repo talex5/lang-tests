@@ -1,9 +1,10 @@
 open Support;;
 
 type which_end = Prepend | Append;;
+type add_mode = {pos :which_end; default :string option; separator :string};;
 
 type mode =
-  | Add of which_end * string option * string (* default, separator *)
+  | Add of add_mode
   | Replace;;
 
 type source =
@@ -29,8 +30,8 @@ let get_source b =
 let get_mode b =
   let get name = Qdom.get_attribute_opt ("", name) b in
   match default "prepend" (get "mode") with
-  | "prepend" -> Add (Prepend, get "default", default path_sep (get "separator"))
-  | "append" -> Add (Append, get "default", default path_sep (get "separator"))
+  | "prepend" -> Add {pos = Prepend; default = get "default"; separator = default path_sep (get "separator")}
+  | "append" -> Add {pos = Append; default = get "default"; separator = default path_sep (get "separator")}
   | "replace" -> Replace
   | x -> failwith("Unknown <environment> mode: " ^ x)
 ;;
@@ -63,7 +64,7 @@ let get_default name = match name with
 let calc_new_value name mode value env =
   match mode with
   | Replace -> value
-  | Add (which_end, default, sep) ->
+  | Add {pos; default; separator} ->
     (* Find the value to join it with *)
     let old_value = (match getenv_opt name env with
       | Some _ as v -> v                  (* current value of variable *)
@@ -75,9 +76,9 @@ let calc_new_value name mode value env =
     match old_value with
     | None -> value
     | Some old ->
-      match which_end with
-      | Prepend -> value ^ sep ^ old
-      | Append -> old ^ sep ^ value
+      match pos with
+      | Prepend -> value ^ separator ^ old
+      | Append -> old ^ separator ^ value
 ;;
 
 let putenv name value env = (

@@ -4,8 +4,8 @@ type element = {
   tag: Xmlm.name;
   mutable attrs: Xmlm.attribute list;
   mutable child_nodes: element list;
-  mutable text_before: string;        (* Text node immediately before us *)
-  mutable last_text_inside: string;   (* Last text node inside us with no following element *)
+  mutable text_before: string;        (** The text node immediately before us *)
+  mutable last_text_inside: string;   (** The last text node inside us with no following element *)
 };;
 
 exception InvalidXML of string;;
@@ -38,8 +38,6 @@ let parse_input i = try (
   raise (InvalidXML (Printf.sprintf "[%d:%d] %s" line col (Xmlm.error_message err)))
 ;;
 
-let parse_string s = parse_input (Xmlm.make_input (`String s));;
-
 let parse_file path =
   try with_open path (fun ch -> parse_input (Xmlm.make_input (`Channel ch)))
   with InvalidXML msg -> raise (InvalidXML(msg ^ " in " ^ path))
@@ -56,6 +54,8 @@ let get_attribute_opt attr elem = try
     Some (List.assoc attr elem.attrs)
   with
     Not_found -> None
+
+(** Helper functions. *)
 
 let iter fn node tag =
   let rec loop = function

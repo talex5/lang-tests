@@ -3,10 +3,10 @@ basedir
 binding
 command
 constants
-main
 qdom
 run
 runner
+runsels
 selections
 stores
 support

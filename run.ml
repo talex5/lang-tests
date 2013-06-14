@@ -1,9 +1,17 @@
 open Constants;;
 open Support;;
 
-type exec_binding = (string * Binding.exec_type * string * string);;  (* iface_uri, exec_type, name, command *)
+type exec_binding = {
+  iface_uri: string;
+  exec_type: Binding.exec_type;
+  name: string;
+  command: string;
+} ;;
 
-type env = (string list * exec_binding list);;
+type env = {
+  vars: string list;
+  exec_bindings: exec_binding list;
+};;
 
 let re_exec_name = Str.regexp "^[^./'][^/']*$";;
 
@@ -15,11 +23,13 @@ let validate_exec_name name =
 
 let do_bindings elem (path : string option) (env : env) : env =
   let process env child : env =
-    let (vars, bindings) = env in
     match Binding.parse_binding child with
     | None -> env
-    | Some (Binding.ExecutableBinding (exec_type, name, command)) -> (vars, ("URI", exec_type, name, command) :: bindings)
-    | Some (Binding.EnvironmentBinding _ as b) -> (Binding.do_env_binding b path vars, bindings)
+    | Some (Binding.ExecutableBinding (exec_type, name, command)) ->
+        let new_binding = {iface_uri = "TODO"; exec_type; name; command} in
+        {env with exec_bindings = new_binding :: env.exec_bindings}
+    | Some (Binding.EnvironmentBinding _ as b) ->
+        {env with vars = Binding.do_env_binding b path env.vars}
     in
   List.fold_left process env (elem.Qdom.child_nodes)
 ;;
@@ -32,7 +42,9 @@ let importance dep = match Qdom.get_attribute_opt ("", "importance") dep with
   | Some _ -> Recommended
 ;;
 
-let prepare_env config selections env : string list =
+let prepare_env config selections vars : string list =
+  let env = {vars; exec_bindings = []} in
+
   let do_dep (env : env) dep : env = (
     let dep_iface = Qdom.get_attribute ("", "interface") dep in
     let dep_sel_opt = match importance dep with
@@ -58,9 +70,9 @@ let prepare_env config selections env : string list =
     List.fold_left process_command env (Selections.get_commands sel)
   ) in
   
-  let (vars, exec_bindings) = Selections.StringMap.fold process_sel selections.Selections.selections env in
+  let {vars; exec_bindings} = Selections.StringMap.fold process_sel selections.Selections.selections env in
 
-  let do_exec_binding vars (iface_uri, exec_type, name, command) = (
+  let do_exec_binding vars {iface_uri; exec_type; name; command} = (
     validate_exec_name name;
 
     (* todo: setup symlinks *)
@@ -145,7 +157,7 @@ let build_command stores selections env =
 ;;
 
 let execute_selections (sels:Selections.selections) (args:string list) config =
-  let original_env = (Array.to_list (Unix.environment ()), []) in
+  let original_env = Array.to_list (Unix.environment ()) in
   let env = prepare_env config sels original_env in
   let prog_args = build_command config.Config.stores sels env @ args in
   flush stdout;
