@@ -1,0 +1,59 @@
+<?xml version="1.0" ?>
+<selections
+  xmlns="http://zero-install.sourceforge.net/2004/injector/interface"
+  interface="http://example.com/prog.xml"
+  command="run">
+
+  <selection interface="http://example.com/prog.xml" id='main-1'>
+    <environment name='prog' insert='.' mode='replace'/>
+    <command name='run' path='prog.fst'>
+      <environment name='libs' insert='.' mode='prepend'/>
+      <runner interface='http://example.com/fast.xml'>
+	<environment name='libs' insert='.' mode='prepend'/>
+	<arg>--arg-to-fast</arg>
+      </runner>
+      <arg>--arg-to-prog</arg>
+
+      <requires interface='http://example.com/lib3.xml'>
+	<environment name='req-in-command' insert='lib3.so' mode='append'/>
+      </requires>
+
+      <requires interface='http://example.com/util.xml'>
+	<executable-in-path name='util'/>
+	<executable-in-var name='TESTUTIL' command='test'/>
+      </requires>
+
+    </command>
+
+    <requires interface='http://example.com/lib1.xml'>
+      <environment name='LIB' insert='.' mode='append'/>
+    </requires>
+
+    <requires interface='http://example.com/lib2.xml'>
+      <environment name='LIB' insert='.' mode='append'/>
+    </requires>
+
+    <manifest-digest sha1='456'/>
+  </selection>
+
+  <selection interface="http://example.com/fast.xml" id='fast-1'>
+    <command name='run' path='fast'>
+      <arg>--fastest</arg>
+    </command>
+    <manifest-digest sha1='123'/>
+  </selection>
+
+  <selection interface='http://example.com/lib1.xml' id='package:lib1'/>
+  <selection interface='http://example.com/lib2.xml' id='/root/lib2'/>
+  <selection interface='http://example.com/lib3.xml' id='/root/lib3'/>
+
+  <selection interface='http://example.com/util.xml' id='util' local-path='@TESTS'>
+    <command name='run' path='util.sh'>
+      <arg>--run</arg>
+    </command>
+    <command name='test' path='util.sh'>
+      <arg>--test</arg>
+    </command>
+  </selection>
+
+</selections>
