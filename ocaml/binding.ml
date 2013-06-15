@@ -7,7 +7,7 @@ type mode =
   | Add of add_mode
   | Replace;;
 
-type source =
+type env_source =
   | InsertPath of string
   | Value of string
 ;;
@@ -15,7 +15,7 @@ type source =
 type exec_type = InPath | InVar;;
 
 type binding =
-| EnvironmentBinding of (string * mode * source)
+| EnvironmentBinding of (string * mode * env_source)
 | ExecutableBinding of (exec_type * string * string);;  (* name, command *)
 
 let get_source b =
