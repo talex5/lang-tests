@@ -1,4 +1,4 @@
 all: runsels
 
 runsels: *.hs
-	ghc runsels.hs
+	ghc -Wall runsels.hs
