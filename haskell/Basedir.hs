@@ -5,8 +5,9 @@ import Control.Exception (catchJust)
 import Data.Maybe (fromMaybe)
 import System.FilePath
 import System.Directory
-import System.Environment (getEnv)
-import System.IO.Error (ioError, tryIOError, isDoesNotExistError)
+import System.Posix.Files (fileExist)
+
+import Support
 
 type SearchPath = [FilePath]
 
@@ -15,8 +16,6 @@ data Basedirs = Basedirs { share :: SearchPath
 			 , config :: SearchPath
 			 } deriving Show
 
-type VarName = String
-
 get_path :: VarName -> VarName -> SearchPath -> IO SearchPath
 get_path home_var dirs_var (default_home:default_system) =
 	do
@@ -24,13 +23,6 @@ get_path home_var dirs_var (default_home:default_system) =
 		system_dirs <- getenv_opt dirs_var
 		return $ (fromMaybe default_home user_dir)
 		       : (maybe default_system splitSearchPath system_dirs)
-	where
-		getenv_opt :: VarName -> IO (Maybe String)
-		getenv_opt var = do
-			maybe_value <- tryIOError (getEnv var)
-			case maybe_value of
-				Left e -> if isDoesNotExistError e then return Nothing else ioError e
-				Right ok -> return $ Just ok
 
 get_default_config :: IO Basedirs
 get_default_config = do
@@ -44,3 +36,10 @@ get_default_config = do
 		cache = cache,
 		config = config
 	}
+
+loadFirst :: FilePath -> SearchPath -> IO (Maybe FilePath)
+loadFirst relPath [] = return Nothing
+loadFirst relPath (dir:xs) = do x <- fileExist fullPath
+				if x then return $ Just fullPath
+				else loadFirst relPath xs
+		       where fullPath = dir </> relPath
