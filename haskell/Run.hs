@@ -1,8 +1,11 @@
 module Run where
 
 import Text.XML.Light
+import Data.Map (Map, fromList, insert, lookup)
 import Data.Maybe (fromMaybe)
-import System.FilePath (searchPathSeparator)
+import System.Environment
+import System.FilePath
+import Control.Monad (mplus)
 
 import Support
 import Selections
@@ -100,12 +103,62 @@ getBindingsFromSelection sel = do
 		where iface = requireAttr "interface" sel
 
 -- Find all the bindings, in document order
-collectBindings :: Selections -> [(InterfaceURI, Binding)]
+collectBindings :: Selections -> [(Selection, Binding)]
 collectBindings sels = do
 		sel <- selectionElements
-		getBindingsFromSelection sel
+		(interfaceURI, binding) <- getBindingsFromSelection sel
+		case Data.Map.lookup interfaceURI (selections sels) of
+		  Nothing -> []				-- Optional dependency which was not selected
+		  Just s -> return (s, binding)
 	where selectionElements = filterChildrenName (hasZName "selection") (root sels)
 
+resolvePath :: Config -> (Selection, Binding) -> IO (Selection, Maybe FilePath, Binding)
+resolvePath config (sel, binding) = do
+					path <- getPath config sel
+					return (sel, path, binding)
+
+type Env = Map VarName String
+
+join :: WhichEnd -> String -> Maybe String -> String -> String
+join _ _ Nothing new = new
+join Prepend sep (Just old) new = new ++ sep ++ old
+join Append sep (Just old) new = old ++ sep ++ new
+
+standardDefault :: VarName -> Maybe String
+standardDefault "PATH" = Just "/bin:/usr/bin"
+standardDefault "XDG_CONFIG_DIRS" = Just "/etc/xdg"
+standardDefault "XDG_DATA_DIRS" = Just "/usr/local/share:/usr/share"
+standardDefault _ = Nothing
+
+doEnvBindings :: Selections -> Env -> [(Selection, Maybe FilePath, Binding)] -> Env
+doEnvBindings _ env [] = env
+doEnvBindings sels env ((_, path, binding) : xs) = doEnvBindings sels (doBinding binding) xs
+	where doBinding (EnvironmentBinding name mode bindingSource) = doEnvBinding name mode bindingSource
+	      doBinding _ = env
+	      doEnvBinding name mode bindingSource = case maybeValue of
+	      						Nothing -> env
+							Just value -> insert name (add value) env
+	      			where maybeValue = case bindingSource of
+							Value v -> Just v
+							InsertPath i -> case path of
+								Nothing -> Nothing
+								Just p -> Just $ p </> i
+				      add newValue = case mode of
+				      			Replace -> newValue
+							Add AddMode {pos = whichEnd, defaultValue = def, separator = sep} ->
+								join whichEnd sep oldValue newValue
+								where oldValue = (Data.Map.lookup name env) `mplus`
+										 def `mplus` (standardDefault name)
+
+
+doExecBindings :: Env -> [(Selection, Maybe FilePath, Binding)] -> IO Env
+doExecBindings env bindings = return env
+
 executeSelections :: Selections -> [Arg] -> Config -> IO ()
-executeSelections sels userArgs config = error (show bindings)
+executeSelections sels userArgs config = do
+		origEnv <- getEnvironment
+		pathBindings <- mapM (resolvePath config) bindings
+		let env = doEnvBindings sels (fromList origEnv) pathBindings
+		envWithExec <- doExecBindings env pathBindings
+		print $ show envWithExec
 	where bindings = collectBindings sels

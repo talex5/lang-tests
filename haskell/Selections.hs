@@ -1,6 +1,7 @@
 module Selections where
 
 import Support
+import Config
 
 import Text.Regex.Posix
 import Data.Map
@@ -13,7 +14,7 @@ data ImplSource = CacheSelection
 		deriving Show
 
 data Selection = Selection { source :: ImplSource
-			   , elem2 :: Element
+			   , element :: Element
 			   } deriving Show
 
 data Selections = Selections { interface :: InterfaceURI
@@ -23,15 +24,15 @@ data Selections = Selections { interface :: InterfaceURI
 			     } deriving Show
 
 wrapSelection :: Element -> Selection
-wrapSelection node = Selection { source = source
-			       , elem2 = node }
-			where localPath = findAttr (mkQName "local-path") node
-			      id = requireAttr "id" node
-			      source = case localPath of
+wrapSelection selectionElement = Selection { source = selectionSource
+					   , element = selectionElement }
+			where localPath = findAttr (mkQName "local-path") selectionElement
+			      implId = requireAttr "id" selectionElement
+			      selectionSource = case localPath of
 			        Just path -> LocalSelection path
-				Nothing -> if id =~ "^/"
-					then LocalSelection id		-- Backwards compatibility
-					else if id =~ "^package:"
+				Nothing -> if implId =~ "^/"
+					then LocalSelection implId		-- Backwards compatibility
+					else if implId =~ "^package:"
 						then PackageSelection
 						else CacheSelection
 
@@ -39,10 +40,16 @@ wrapSelection node = Selection { source = source
 loadSelections :: FilePath -> IO Selections
 loadSelections path = do
 	xmlStr <- Data.ByteString.readFile path			-- not plain readFile!
-	let Just root = parseXMLDoc xmlStr			-- Nothing??
-	let selectionElements = filterChildrenName (hasZName "selection") root
-	return $ Selections { interface = requireAttr "interface" root
-			    , command = findAttr (mkQName "command") root
+	let Just docRoot = parseXMLDoc xmlStr			-- Nothing??
+	let selectionElements = filterChildrenName (hasZName "selection") docRoot
+	return $ Selections { interface = requireAttr "interface" docRoot
+			    , command = findAttr (mkQName "command") docRoot
 			    , selections = fromList $ [(requireAttr "interface" sel, wrapSelection sel) | sel <- selectionElements]
-			    , root = root
+			    , root = docRoot
 	}
+
+getPath :: Config -> Selection -> IO (Maybe FilePath)
+getPath config sel = case source sel of
+	CacheSelection -> return $ Just "/root"
+	LocalSelection path -> return $ Just path
+	PackageSelection -> return Nothing
