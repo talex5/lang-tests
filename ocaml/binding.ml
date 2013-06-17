@@ -1,4 +1,5 @@
 open Support;;
+open Constants;;
 
 type which_end = Prepend | Append;;
 type add_mode = {pos :which_end; default :string option; separator :string};;
@@ -24,7 +25,7 @@ let get_source b =
   | (None, None) -> failwith "Missing 'insert' or 'value'"
   | (Some i, None) -> InsertPath i
   | (None, Some v) -> Value v
-  | (Some i, Some v) -> failwith "Can't use 'insert' and 'value' together"
+  | (Some _, Some _) -> failwith "Can't use 'insert' and 'value' together"
 ;;
 
 let get_mode b =
@@ -39,11 +40,11 @@ let get_mode b =
 let parse_binding elem =
   let get_opt name = Qdom.get_attribute_opt ("", name) elem in
   let get name = Qdom.get_attribute ("", name) elem in
-  match elem.Qdom.tag with
-  | (xmlns_feed, "environment") -> Some (EnvironmentBinding (get "name", get_mode elem, get_source elem))
-  | (xmlns_feed, "executable-in-path") -> Some (ExecutableBinding (InPath, get "name", default "run" (get_opt "command")))
-  | (xmlns_feed, "executable-in-var") -> Some (ExecutableBinding (InVar, get "name", default "run" (get_opt "command")))
-  | (xmlns_feed, "overlay") | (xmlns_feed, "binding") -> failwith "unsupporting binding type"
+  match ZI.tag elem with
+  | Some "environment" -> Some (EnvironmentBinding (get "name", get_mode elem, get_source elem))
+  | Some "executable-in-path" -> Some (ExecutableBinding (InPath, get "name", default "run" (get_opt "command")))
+  | Some "executable-in-var" -> Some (ExecutableBinding (InVar, get "name", default "run" (get_opt "command")))
+  | Some "overlay" | Some "binding" -> failwith "unsupporting binding type"
   | _ -> None
 ;;
 

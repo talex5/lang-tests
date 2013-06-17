@@ -17,7 +17,7 @@ let rec parse_nodes i prev_siblings prev_text =
   else
     match Xmlm.input i with
       | `Data s -> parse_nodes i prev_siblings (prev_text ^ s)
-      | `Dtd dtd -> parse_nodes i prev_siblings prev_text
+      | `Dtd _dtd -> parse_nodes i prev_siblings prev_text
       | `El_end -> (prev_siblings, prev_text)
       | `El_start (tag, attrs) -> (
         let child_nodes, trailing_text = parse_nodes i [] "" in
@@ -57,23 +57,44 @@ let get_attribute_opt attr elem = try
 
 (** Helper functions. *)
 
-let iter fn node tag =
-  let rec loop = function
-    | [] -> ()
-    | (node::xs) -> (
-      if node.tag = tag then fn node else ();
-      loop xs
-    ) in
-  loop node.child_nodes;;
-
-let fold_left fn init node tag =
-  let fn2 m elem = if elem.tag = tag then fn m elem else m in
-  List.fold_left fn2 init node.child_nodes
-
-let map fn node tag =
-  let rec loop = function
-    | [] -> []
-    | (node::xs) -> if node.tag = tag then (fn node) :: loop xs else loop xs in
-  loop node.child_nodes
-
 let find pred node = List.find pred node.child_nodes;;
+
+let show_brief elem =
+  let (_ns, name) = elem.tag in
+  "<" ^ name ^ ">"
+;;
+
+module type NsType = sig
+  val ns : string;;
+end;;
+
+module NsQuery (Ns : NsType) = struct
+  let fold_left fn init node tag =
+    let fn2 m elem = if elem.tag = (Ns.ns, tag) then fn m elem else m in
+    List.fold_left fn2 init node.child_nodes
+  ;;
+
+  let map fn node tag =
+    let rec loop = function
+      | [] -> []
+      | (node::xs) -> if node.tag = (Ns.ns, tag) then (fn node) :: loop xs else loop xs in
+    loop node.child_nodes
+  ;;
+
+  let get_attribute attr elem = try
+      List.assoc ("", attr) elem.attrs
+    with
+      Not_found -> failwith ("Missing attribute " ^ attr ^ " on " ^ (show_brief elem))
+  ;;
+
+  let get_attribute_opt attr elem = try
+      Some (List.assoc ("", attr) elem.attrs)
+    with
+      Not_found -> None
+  ;;
+
+  let tag elem =
+    let (elem_ns, name) = elem.tag in
+    if elem_ns = Ns.ns then Some name
+    else None
+end;;

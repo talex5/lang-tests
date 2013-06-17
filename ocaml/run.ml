@@ -71,9 +71,9 @@ let expand_arg template env =
 
 (* Return a list of string arguments by expanding <arg> and <for-each> children of [elem] *)
 let rec get_args elem env =
-  let process args child = match child.Qdom.tag with
-  | (xmlns_feed, "arg") -> (expand_arg child.Qdom.last_text_inside env) :: args
-  | (xmlns_feed, "for-each") -> (expand_foreach child env) @ args
+  let process args child = match ZI.tag child with
+  | Some "arg" -> (expand_arg child.Qdom.last_text_inside env) :: args
+  | Some "for-each" -> (expand_foreach child env) @ args
   | _ -> args in
   List.fold_left process [] (elem.Qdom.child_nodes)
 and expand_foreach node env =

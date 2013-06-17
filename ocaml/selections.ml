@@ -39,7 +39,7 @@ let rec find_selections root =
     assert (not (StringMap.mem id m));
     StringMap.add id (make_selection node) m
   ) in
-  let m = Qdom.fold_left add StringMap.empty root (xmlns_feed, "selection") in
+  let m = ZI.fold_left add StringMap.empty root "selection" in
   m
 
 let make root = {
@@ -65,7 +65,7 @@ let get_digests elem =
     | _ -> init in
   let extract_digests init elem =
     List.fold_left check_attr init elem.Qdom.attrs in
-  Qdom.fold_left extract_digests [] elem (xmlns_feed, "manifest-digest");;
+  ZI.fold_left extract_digests [] elem "manifest-digest";;
 
 let get_elem (impl_source, elem) = elem;;
 
@@ -81,11 +81,11 @@ let get_path stores (impl_source, elem) =
     | digests -> Some (Stores.lookup_any digests stores);;
 
 let get_commands (impl_source, elem) =
-  Qdom.map Command.make elem (xmlns_feed, "command");;
+  ZI.map Command.make elem "command";;
 
 let get_command name sel =
   let elem = get_elem sel in
-  let is_command node = ((node.Qdom.tag = (xmlns_feed, "command")) && (Qdom.get_attribute ("", "name") node = name)) in
+  let is_command node = ((ZI.tag node = Some "command") && (ZI.get_attribute "name" node = name)) in
   let command_elem =
     try Qdom.find is_command elem
     with Not_found -> failwith ("No <command> with name '" ^ name ^ "'")
@@ -93,8 +93,8 @@ let get_command name sel =
   Command.make command_elem;;
 
 let get_deps elem =
-  let is_dep elem = match elem.Qdom.tag with
-  | (xmlns_feed, "requires") | (xmlns_feed, "runner") -> true
+  let is_dep elem = match ZI.tag elem with
+  | Some "requires" | Some "runner" -> true
   | _ -> false
   in List.filter is_dep elem.Qdom.child_nodes
 ;;

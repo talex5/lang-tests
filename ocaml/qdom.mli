@@ -26,11 +26,21 @@ val get_attribute_opt : Xmlm.name -> element -> string option
 
 (** {2 Helper functions} *)
 
-val iter : (element -> unit) -> element -> Xmlm.name -> unit
-
-(** [fold_left fn init elem tag] processes each child of [elem] with the given [tag] using [fn]. *)
-val fold_left : ('a -> element -> 'a) -> 'a -> element -> Xmlm.name -> 'a
-
-val map : (element -> 'a) -> element -> Xmlm.name -> 'a list
-
 val find : (element -> bool) -> element -> element
+
+module type NsType = sig val ns : string end
+
+module NsQuery :
+  functor (Ns : NsType) ->
+    sig
+      val fold_left : ('a -> element -> 'a) -> 'a -> element -> string -> 'a
+
+      val get_attribute : string -> element -> string
+      val get_attribute_opt : string -> element -> string option
+
+      val map : (element -> 'a) -> element -> string -> 'a list
+
+      (** Return the localName part of this element's tag. Throws an exception if it's in the wrong namespace. *)
+      val tag : element -> string option
+      ;;
+    end;;

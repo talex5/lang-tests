@@ -57,9 +57,8 @@ let (+/) = Filename.concat;;
 
 let rec makedirs path mode =
   try (
-    match (Unix.lstat path).Unix.st_kind with
-    | Unix.S_DIR -> ()
-    | _ -> failwith ("Not a directory: " ^ path)
+    if (Unix.lstat path).Unix.st_kind = Unix.S_DIR then ()
+    else failwith ("Not a directory: " ^ path)
   ) with Unix.Unix_error _ -> (
     let parent = (Filename.dirname path) in
     assert (path <> parent);
