@@ -13,6 +13,9 @@
 	<arg>--arg-to-fast</arg>
       </runner>
       <arg>--arg-to-prog</arg>
+      <for-each item-from='LIST' separator=','>
+	<arg>-X$item</arg>
+      </for-each>
 
       <requires interface='http://example.com/lib3.xml'>
 	<environment name='req-in-command' insert='lib3.so' mode='append'/>
@@ -54,6 +57,7 @@
     <command name='test' path='util.sh'>
       <arg>--test</arg>
     </command>
+    <environment name='LIST' value='1,2,3' mode='replace'/>
   </selection>
 
 </selections>

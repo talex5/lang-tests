@@ -8,7 +8,6 @@ import Text.Regex.Posix
 import Data.Map
 import Text.XML.Light
 import Data.ByteString (readFile)
-import System.Posix.Files (fileExist)
 import System.FilePath
 
 data ImplSource = CacheSelection
@@ -65,15 +64,15 @@ formatDigest (alg, value) = if isOldAlg alg then alg ++ "=" ++ value
 			    -- TODO validate
 
 lookupDigest :: Digest -> SearchPath -> IO (Maybe FilePath)
-lookupDigest digest stores = loadFirst ("0install.net" </> "implementations" </> digestStr) stores
+lookupDigest digest storesPath = loadFirst ("0install.net" </> "implementations" </> digestStr) storesPath
 	where digestStr = formatDigest digest
 
 lookupAnyDigest :: SearchPath -> [Digest] -> IO (Maybe FilePath)
-lookupAnyDigest stores [] = error "Implementation not cached"		-- TODO: better error
-lookupAnyDigest stores (x:xs) = do mPath <- lookupDigest x stores
-				   case mPath of
-					Just path -> return $ Just path
-					Nothing -> lookupAnyDigest stores xs
+lookupAnyDigest storesPath [] = error "Implementation not cached"		-- TODO: better error
+lookupAnyDigest storesPath (x:xs) = do mPath <- lookupDigest x storesPath
+				       case mPath of
+					  Just path -> return $ Just path
+					  Nothing -> lookupAnyDigest storesPath xs
 
 getDigests :: Selection -> [Digest]
 getDigests sel = do (name, child) <- ziChildren (element sel)
