@@ -1,10 +1,11 @@
 module Run where
 
 import Text.XML.Light
-import Data.Map (Map, fromList, insert, lookup)
-import Data.Maybe (fromMaybe)
+import Data.Map (Map, toList, fromList, insert, lookup, member)
+import Data.Maybe (fromMaybe, catMaybes)
 import System.Environment
 import System.FilePath
+import System.Posix.Process
 import Control.Monad (mplus)
 
 import Support
@@ -103,19 +104,14 @@ getBindingsFromSelection sel = do
 		where iface = requireAttr "interface" sel
 
 -- Find all the bindings, in document order
-collectBindings :: Selections -> [(Selection, Binding)]
+-- Excludes bindings to unselected optional components
+collectBindings :: Selections -> [(InterfaceURI, Binding)]
 collectBindings sels = do
 		sel <- selectionElements
 		(interfaceURI, binding) <- getBindingsFromSelection sel
-		case Data.Map.lookup interfaceURI (selections sels) of
-		  Nothing -> []				-- Optional dependency which was not selected
-		  Just s -> return (s, binding)
+		if interfaceURI `member` (selections sels) then [(interfaceURI, binding)]
+		else []  -- Optional dependency which was not selected
 	where selectionElements = filterChildrenName (hasZName "selection") (root sels)
-
-resolvePath :: Config -> (Selection, Binding) -> IO (Selection, Maybe FilePath, Binding)
-resolvePath config (sel, binding) = do
-					path <- getPath config sel
-					return (sel, path, binding)
 
 type Env = Map VarName String
 
@@ -130,9 +126,9 @@ standardDefault "XDG_CONFIG_DIRS" = Just "/etc/xdg"
 standardDefault "XDG_DATA_DIRS" = Just "/usr/local/share:/usr/share"
 standardDefault _ = Nothing
 
-doEnvBindings :: Selections -> Env -> [(Selection, Maybe FilePath, Binding)] -> Env
+doEnvBindings :: Map InterfaceURI FilePath -> Env -> [(InterfaceURI, Binding)] -> Env
 doEnvBindings _ env [] = env
-doEnvBindings sels env ((_, path, binding) : xs) = doEnvBindings sels (doBinding binding) xs
+doEnvBindings pathMap env ((iface, binding) : xs) = doEnvBindings pathMap (doBinding binding) xs
 	where doBinding (EnvironmentBinding name mode bindingSource) = doEnvBinding name mode bindingSource
 	      doBinding _ = env
 	      doEnvBinding name mode bindingSource = case maybeValue of
@@ -140,8 +136,8 @@ doEnvBindings sels env ((_, path, binding) : xs) = doEnvBindings sels (doBinding
 							Just value -> insert name (add value) env
 	      			where maybeValue = case bindingSource of
 							Value v -> Just v
-							InsertPath i -> case path of
-								Nothing -> Nothing
+							InsertPath i -> case Data.Map.lookup iface pathMap of
+								Nothing -> Nothing		-- Package implementation
 								Just p -> Just $ p </> i
 				      add newValue = case mode of
 				      			Replace -> newValue
@@ -151,14 +147,48 @@ doEnvBindings sels env ((_, path, binding) : xs) = doEnvBindings sels (doBinding
 										 def `mplus` (standardDefault name)
 
 
-doExecBindings :: Env -> [(Selection, Maybe FilePath, Binding)] -> IO Env
-doExecBindings env bindings = return env
+doExecBindings :: Map InterfaceURI FilePath -> Env -> [(InterfaceURI, Binding)] -> IO Env
+doExecBindings fileMap env bindings = return env
+
+argsFromElem :: Env -> Element -> [String]
+argsFromElem env element = []	-- TODO
+
+buildCommand :: Selections -> Env -> Map InterfaceURI FilePath -> InterfaceURI -> String -> [String]
+buildCommand sels env pathMap iface commandName = runnerArgs ++ commandExec ++ commandArgs
+	where
+		Just sel = Data.Map.lookup iface (selections sels)
+		commandElem = getCommandElement commandName sel
+		commandArgs = argsFromElem env commandElem
+		mCommandPath = findAttr (mkQName "path") commandElem
+		implPath = Data.Map.lookup iface pathMap
+		commandExec = case mCommandPath of
+				Nothing -> []			-- TODO: not for top-level
+			        Just commandPath -> case implPath of
+							Nothing -> [commandPath]		-- Native package (must be absolute)
+							Just prefix -> [prefix </> commandPath]
+							-- TODO: check path exists (also in OCaml)
+		mRunnerElem = getRunnerElement commandElem
+		runnerArgs = case mRunnerElem of
+				Nothing -> []
+				Just runnerElem -> (buildCommand sels env pathMap runnerIface runnerCommandName) ++ runnerExtraArgs
+					      where runnerIface = requireAttr "interface" runnerElem
+					      	    runnerExtraArgs = argsFromElem env runnerElem
+					            runnerCommandName = fromMaybe "run" (findAttr (mkQName "command") runnerElem)
 
 executeSelections :: Selections -> [Arg] -> Config -> IO ()
 executeSelections sels userArgs config = do
 		origEnv <- getEnvironment
-		pathBindings <- mapM (resolvePath config) bindings
-		let env = doEnvBindings sels (fromList origEnv) pathBindings
-		envWithExec <- doExecBindings env pathBindings
-		print $ show envWithExec
+		paths <- mapM resolvePath (toList $ selections sels)
+		let pathMap = fromList $ catMaybes paths
+		let env = doEnvBindings pathMap (fromList origEnv) bindings
+		envWithExec <- doExecBindings pathMap env bindings
+		let argv = (buildCommand sels env pathMap (interface sels) commandName) ++ userArgs
+		-- print $ show envWithExec
+		print $ show argv
+		-- executeFile (head argv) False (tail argv) (Just $ toList env)
 	where bindings = collectBindings sels
+	      Just commandName = (command sels)
+	      resolvePath (iface, sel) = do mPath <- getPath config sel
+	      				    case mPath of
+						    Nothing -> return Nothing
+						    Just path -> return $ Just (iface, path)

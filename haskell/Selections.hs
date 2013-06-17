@@ -2,11 +2,14 @@ module Selections where
 
 import Support
 import Config
+import Basedir (SearchPath, cache, loadFirst)
 
 import Text.Regex.Posix
 import Data.Map
 import Text.XML.Light
 import Data.ByteString (readFile)
+import System.Posix.Files (fileExist)
+import System.FilePath
 
 data ImplSource = CacheSelection
 		| LocalSelection FilePath
@@ -48,8 +51,50 @@ loadSelections path = do
 			    , root = docRoot
 	}
 
+type Digest = (String, String)
+
+isOldAlg :: String -> Bool
+isOldAlg "sha1" = True
+isOldAlg "sha1new" = True
+isOldAlg "sha256" = True
+isOldAlg _ = False
+
+formatDigest :: Digest -> String
+formatDigest (alg, value) = if isOldAlg alg then alg ++ "=" ++ value
+			    else alg ++ "_" ++ value
+			    -- TODO validate
+
+lookupDigest :: Digest -> SearchPath -> IO (Maybe FilePath)
+lookupDigest digest stores = loadFirst ("0install.net" </> "implementations" </> digestStr) stores
+	where digestStr = formatDigest digest
+
+lookupAnyDigest :: SearchPath -> [Digest] -> IO (Maybe FilePath)
+lookupAnyDigest stores [] = error "Implementation not cached"		-- TODO: better error
+lookupAnyDigest stores (x:xs) = do mPath <- lookupDigest x stores
+				   case mPath of
+					Just path -> return $ Just path
+					Nothing -> lookupAnyDigest stores xs
+
+getDigests :: Selection -> [Digest]
+getDigests sel = do (name, child) <- ziChildren (element sel)
+		    if name == "manifest-digest" then digestsFromElem child
+		    else []
+	where
+		digestsFromElem :: Element -> [Digest]
+		digestsFromElem selElement = [((qName key), value) | Attr key value <- elAttribs selElement, (qURI key) == Nothing]	-- TODO: id
+
 getPath :: Config -> Selection -> IO (Maybe FilePath)
 getPath config sel = case source sel of
-	CacheSelection -> return $ Just "/root"
+	CacheSelection -> lookupAnyDigest (cache $ basedirs config) $ getDigests sel
 	LocalSelection path -> return $ Just path
 	PackageSelection -> return Nothing
+
+getCommandElement :: String -> Selection -> Element
+getCommandElement name (Selection _ selElem) = commandElement
+	where Just commandElement = filterChild isCommand selElem
+	      isCommand specimen = (qURI qname) == Just xmlns_feed && (qName qname) == "command" && (requireAttr "name" specimen) == name
+	      		where qname = elName specimen
+
+getRunnerElement :: Element -> Maybe Element
+getRunnerElement commandElem = filterChildName isRunner commandElem
+	where isRunner qname = (qURI qname) == Just xmlns_feed && (qName qname) == "runner"
