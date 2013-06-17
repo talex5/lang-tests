@@ -6,10 +6,12 @@ import Text.XML.Light
 import Text.Printf (printf)
 import Text.Regex.Posix
 import Data.List (foldl')
+import Data.Map (Map)
 
 xmlns_feed :: String
 xmlns_feed = "http://zero-install.sourceforge.net/2004/injector/interface"
 
+type Env = Map VarName String
 type InterfaceURI = String
 type ImplID = String
 type VarName = String
@@ -51,9 +53,9 @@ ziChildren parent = do child <- elChildren parent
 -- Based on http://stackoverflow.com/a/9072362/50926
 -- Use the given function to replace each occurance of 're' in 's'
 replaceAll :: Regex -> (String -> String) -> String -> String
-replaceAll re f s = start end
-  where (_, end, start) = foldl' go (0, s, id) $ getAllMatches $ match re s
-        go (ind,read,write) (off,len) =
-          let (skip, start) = splitAt (off - ind) read 
+replaceAll re f s = prefix end
+  where (_, end, prefix) = foldl' go (0, s, id) $ getAllMatches $ match re s
+        go (ind,toRead,write) (off,len) =
+          let (skip, start) = splitAt (off - ind) toRead 
               (matched, remaining) = splitAt len start 
           in (off + len, remaining, write . (skip++) . (f matched ++))

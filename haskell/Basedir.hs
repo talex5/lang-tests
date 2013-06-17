@@ -43,3 +43,8 @@ loadFirst relPath (dir:xs) = do x <- fileExist fullPath
 				if x then return $ Just fullPath
 				else loadFirst relPath xs
 		       where fullPath = dir </> relPath
+
+save :: FilePath -> SearchPath -> IO FilePath
+save relPath (dir:_) = do createDirectoryIfMissing True fullPath
+			  return fullPath
+		where fullPath = dir </> relPath

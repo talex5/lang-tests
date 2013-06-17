@@ -4,10 +4,16 @@ import Text.XML.Light
 import Data.Map (Map, insert, lookup, member)
 import Data.Maybe (fromMaybe)
 import System.FilePath
-import Control.Monad (mplus)
+import Control.Monad (mplus, foldM)
+import Text.Regex.Posix
+import System.Posix.Files (fileExist, createSymbolicLink, setFileMode)
+import Text.JSON (encode)
 
 import Support
+import Config
 import Selections
+import Command (buildCommand)
+import Basedir (save, cache)
 
 data WhichEnd = Prepend | Append deriving Show
 
@@ -108,8 +114,6 @@ collectBindings sels = do
 		else []  -- Optional dependency which was not selected
 	where selectionElements = filterChildrenName (hasZName "selection") (root sels)
 
-type Env = Map VarName String
-
 join :: WhichEnd -> String -> Maybe String -> String -> String
 join _ _ Nothing new = new
 join Prepend sep (Just old) new = new ++ sep ++ old
@@ -141,6 +145,39 @@ doEnvBindings pathMap env ((iface, binding) : xs) = doEnvBindings pathMap (doBin
 								where oldValue = (Data.Map.lookup name env) `mplus`
 										 def `mplus` (standardDefault name)
 
+validateName :: String -> String
+validateName name = if name =~ "^[^./'][^/']*$" then name
+		    else error $ "Invalid command name: " ++ name
 
-doExecBindings :: Map InterfaceURI FilePath -> Env -> [(InterfaceURI, Binding)] -> IO Env
-doExecBindings fileMap env bindings = return env
+checkRunenv :: Config -> IO ()
+checkRunenv config = do execDir <- save ("0install.net" </> "injector") (cache $ basedirs config)
+			let execPath = execDir </> "runenv.haskell"
+			x <- fileExist execPath
+			if x then return ()
+			else createSymbolicLink ((resourceDir config) </> "Runenv") execPath
+
+ensureLauncher :: Config -> String -> IO FilePath
+ensureLauncher config name = do execDir <- save ("0install.net" </> "injector" </> "executables" </> name) (cache $ basedirs config)
+				let execPath = execDir </> name
+				x <- fileExist execPath
+				if x then return execDir
+				else do createSymbolicLink "../../runenv.haskell" execPath
+				        setFileMode execDir 0o500
+					return execDir
+
+doExecBindings :: Config -> Selections -> Map InterfaceURI FilePath -> Env -> [(InterfaceURI, Binding)] -> IO Env
+doExecBindings config sels pathMap initEnv bindings = checkRunenv config >> foldM doExecBinding initEnv bindings
+	where doExecBinding :: Env -> (InterfaceURI, Binding) -> IO Env
+	      doExecBinding env (iface, ExecutableBinding bindingType name uncheckedCommandName) =
+	      				do execDir <- ensureLauncher config name
+					   let commandJSON = encode (buildCommand sels env pathMap iface commandName)
+					   let env2 = insert ("0install-runenv-" ++ name) commandJSON env
+					   let env3 = case bindingType of
+						     InVar -> insert name (execDir </> name) env2
+						     InPath -> insert "PATH" newValue env2
+								where oldValue = (Data.Map.lookup "PATH" env2) `mplus`
+										 (standardDefault "PATH")
+								      newValue = join Prepend [searchPathSeparator] oldValue execDir
+					   return env3
+			where commandName = validateName uncheckedCommandName
+	      doExecBinding env _ = return env
