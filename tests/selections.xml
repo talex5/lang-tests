@@ -15,6 +15,7 @@
       <arg>--arg-to-prog</arg>
       <for-each item-from='LIST' separator=','>
 	<arg>-X$item</arg>
+	<arg>-Y${item}</arg>
       </for-each>
 
       <requires interface='http://example.com/lib3.xml'>

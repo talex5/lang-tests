@@ -1,12 +1,14 @@
 module Run where
 
+import Text.Regex.Posix
 import Text.XML.Light
-import Data.Map (Map, toList, fromList, insert, lookup, member)
+import Data.Map (Map, toList, fromList, insert, lookup)
 import Data.Maybe (fromMaybe, catMaybes)
 import System.Environment
 import System.FilePath
+import System.Posix.Process (executeFile)
 import Data.Text (splitOn, pack, unpack)
-import Control.Monad (mplus)
+import Text.Printf (printf)
 
 import Support
 import Selections
@@ -16,7 +18,15 @@ import Bindings
 type Arg = String
 
 expandArg :: String -> Env -> String
-expandArg template env = template	-- TODO
+expandArg template env = replaceAll re replace template
+	where re = makeRegex "\\$(\\$|([a-zA-Z_][a-zA-Z0-9_]*)|\\{[^\\}]*})"
+	      replace match = case match of
+	      			"$$" -> "$"
+				'$' : '{' : ms -> replaceVar $ init ms
+				'$' : var -> replaceVar var
+	      replaceVar var = case (Data.Map.lookup var env) of
+	      				Nothing -> error (printf "Variable '%s' not set!" var)
+					Just value -> value
 
 expandForEach :: Element -> Env -> [String]
 expandForEach parent env = do value <- values
@@ -66,7 +76,7 @@ executeSelections sels userArgs config = do
 		let argv = (buildCommand sels envWithExec pathMap (interface sels) commandName) ++ userArgs
 		-- print $ show envWithExec
 		print $ show argv
-		-- executeFile (head argv) False (tail argv) (Just $ toList envWithExec)
+		executeFile (head argv) False (tail argv) (Just $ toList envWithExec)
 	where bindings = collectBindings sels
 	      Just commandName = (command sels)
 	      resolvePath (iface, sel) = do mPath <- getPath config sel

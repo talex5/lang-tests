@@ -4,6 +4,8 @@ import System.Environment (getEnv)
 import System.IO.Error (tryIOError, isDoesNotExistError)
 import Text.XML.Light
 import Text.Printf (printf)
+import Text.Regex.Posix
+import Data.List (foldl')
 
 xmlns_feed :: String
 xmlns_feed = "http://zero-install.sourceforge.net/2004/injector/interface"
@@ -45,3 +47,13 @@ ziChildren parent = do child <- elChildren parent
 		       let name = elName child
 		       if ((qURI name) == Just xmlns_feed) then return ((qName name), child)
 		       else []
+
+-- Based on http://stackoverflow.com/a/9072362/50926
+-- Use the given function to replace each occurance of 're' in 's'
+replaceAll :: Regex -> (String -> String) -> String -> String
+replaceAll re f s = start end
+  where (_, end, start) = foldl' go (0, s, id) $ getAllMatches $ match re s
+        go (ind,read,write) (off,len) =
+          let (skip, start) = splitAt (off - ind) read 
+              (matched, remaining) = splitAt len start 
+          in (off + len, remaining, write . (skip++) . (f matched ++))
