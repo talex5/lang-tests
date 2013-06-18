@@ -1,4 +1,3 @@
-open Support;;
 open Constants;;
 
 type impl_source =
@@ -38,8 +37,6 @@ let make_selection elem =
       )
   ) in source
 ;;
-
-let get_elem (impl_source, elem) = elem;;
 
 let get_path stores elem =
   match make_selection elem with

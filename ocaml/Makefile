@@ -1,5 +1,5 @@
 all:
-	 ocamlbuild -cflags "-g" -use-ocamlfind -pkg yojson,xmlm,unix,str runsels.native
+	 ocamlbuild -cflags "-g,-w A-4" -use-ocamlfind -pkg yojson,xmlm,unix,str runsels.native
 	 ocamlbuild -cflags "-g,-w A" -use-ocamlfind -pkg yojson,unix runenv.native
 
 byte:
