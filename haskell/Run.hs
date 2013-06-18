@@ -17,7 +17,7 @@ executeSelections sels userArgs config = do
 		origEnv <- getEnvironment
 		paths <- mapM resolvePath (toList $ selections sels)
 		let pathMap = fromList $ catMaybes paths
-		let env = doEnvBindings pathMap (fromList origEnv) bindings
+		let env = foldl (doEnvBinding pathMap) (fromList origEnv) bindings
 		envWithExec <- doExecBindings config sels pathMap env bindings
 		let argv = (buildCommand sels envWithExec pathMap (interface sels) commandName) ++ userArgs
 		-- print $ show envWithExec

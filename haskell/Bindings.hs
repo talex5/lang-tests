@@ -125,25 +125,23 @@ standardDefault "XDG_CONFIG_DIRS" = Just "/etc/xdg"
 standardDefault "XDG_DATA_DIRS" = Just "/usr/local/share:/usr/share"
 standardDefault _ = Nothing
 
-doEnvBindings :: Map InterfaceURI FilePath -> Env -> [(InterfaceURI, Binding)] -> Env
-doEnvBindings _ env [] = env
-doEnvBindings pathMap env ((iface, binding) : xs) = doEnvBindings pathMap (doBinding binding) xs
-	where doBinding (EnvironmentBinding name mode bindingSource) = doEnvBinding name mode bindingSource
-	      doBinding _ = env
-	      doEnvBinding name mode bindingSource = case maybeValue of
-	      						Nothing -> env
-							Just value -> insert name (add value) env
-	      			where maybeValue = case bindingSource of
-							Value v -> Just v
-							InsertPath i -> case Data.Map.lookup iface pathMap of
-								Nothing -> Nothing		-- Package implementation
-								Just p -> Just $ p </> i
-				      add newValue = case mode of
-				      			Replace -> newValue
-							Add AddMode {pos = whichEnd, defaultValue = def, separator = sep} ->
-								join whichEnd sep oldValue newValue
-								where oldValue = (Data.Map.lookup name env) `mplus`
-										 def `mplus` (standardDefault name)
+doEnvBinding :: Map InterfaceURI FilePath -> Env -> (InterfaceURI, Binding) -> Env
+doEnvBinding pathMap env (iface, EnvironmentBinding name mode bindingSource) =
+	case maybeValue of
+		Nothing -> env
+		Just value -> insert name (add value) env
+	where maybeValue = case bindingSource of
+		    Value v -> Just v
+		    InsertPath i -> case Data.Map.lookup iface pathMap of
+			    Nothing -> Nothing		-- Package implementation
+			    Just p -> Just $ p </> i
+	      add newValue = case mode of
+		    Replace -> newValue
+		    Add AddMode {pos = whichEnd, defaultValue = def, separator = sep} ->
+			    join whichEnd sep oldValue newValue
+			    where oldValue = (Data.Map.lookup name env) `mplus`
+					     def `mplus` (standardDefault name)
+doEnvBinding _ env _ = env
 
 validateName :: String -> String
 validateName name = if name =~ "^[^./'][^/']*$" then name
