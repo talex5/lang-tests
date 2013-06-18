@@ -125,14 +125,14 @@ standardDefault "XDG_CONFIG_DIRS" = Just "/etc/xdg"
 standardDefault "XDG_DATA_DIRS" = Just "/usr/local/share:/usr/share"
 standardDefault _ = Nothing
 
-doEnvBinding :: Map InterfaceURI FilePath -> Env -> (InterfaceURI, Binding) -> Env
-doEnvBinding pathMap env (iface, EnvironmentBinding name mode bindingSource) =
+doEnvBinding :: Maybe FilePath -> Env -> Binding -> Env
+doEnvBinding mPath env (EnvironmentBinding name mode bindingSource) =
 	case maybeValue of
 		Nothing -> env
 		Just value -> insert name (add value) env
 	where maybeValue = case bindingSource of
 		    Value v -> Just v
-		    InsertPath i -> case Data.Map.lookup iface pathMap of
+		    InsertPath i -> case mPath of
 			    Nothing -> Nothing		-- Package implementation
 			    Just p -> Just $ p </> i
 	      add newValue = case mode of
