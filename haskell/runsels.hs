@@ -14,17 +14,16 @@ import Selections (loadSelections)
 import Run (executeSelections)
 
 main :: IO ()
-main = do
-        progPath <- getFullProgName
-	absProgPath <- absolute_path progPath
-	conf <- Config.get_default_config (dropFileName absProgPath)
-	argv <- getArgs
-	case argv of
-		[] -> error "Syntax: runsels [APP | SELECTIONS] [ARGS]"
-		(app_or_sels:args) -> do
-			app <- lookup_app app_or_sels conf
+main = do progPath <- getFullProgName
+	  absProgPath <- absolute_path progPath
+	  conf <- Config.getDefaultConfig (dropFileName absProgPath)
+	  argv <- getArgs
+	  case argv of
+	       [] -> error "Syntax: runsels [APP | SELECTIONS] [ARGS]"
+	       (appOrSels:args) -> do
+			app <- lookupApp appOrSels conf
 			let selsPath = case app of
-				Nothing -> app_or_sels
+				Nothing -> appOrSels
 				Just path -> path </> "selections.xml"
 			sels <- loadSelections selsPath
 			executeSelections sels args conf

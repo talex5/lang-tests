@@ -8,11 +8,11 @@ data Config = Config { basedirs :: Basedir.Basedirs
 		     } deriving Show
 
 
-get_default_config :: FilePath -> IO Config
-get_default_config resources =
-  do basedirs_config <- Basedir.get_default_config
+getDefaultConfig :: FilePath -> IO Config
+getDefaultConfig resources =
+  do basedirsConfig <- Basedir.getDefaultConfig
      return Config {
-	     basedirs = basedirs_config,
+	     basedirs = basedirsConfig,
 	     stores = [],
 	     resourceDir = resources
      }
