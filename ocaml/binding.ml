@@ -72,35 +72,30 @@ let calc_new_value name mode value env =
   match mode with
   | Replace -> value
   | Add {pos; default; separator} ->
-    (* Find the value to join it with *)
-    let old_value = (match Env.find_opt name env with
+    let old_value = match Env.find_opt name env with
       | Some _ as v -> v                  (* current value of variable *)
-      | None -> (match default with
+      | None -> match default with
         | Some _ as d -> d                (* or the specified default *)
         | None -> get_default name        (* or the standard default *)
-      )
-    ) in
+    in
     match old_value with
     | None -> value
     | Some old ->
       match pos with
       | Prepend -> value ^ separator ^ old
-      | Append -> old ^ separator ^ value
-;;
+      | Append -> old ^ separator ^ value;;
 
 let do_env_binding b path env = match b with
 | EnvironmentBinding {var_name; mode; source} -> (
     let value = match source with
-    | InsertPath i -> (
+    | Value v -> Some v
+    | InsertPath i ->
       match path with
       | None -> None  (* a PackageSelection; skip binding *)
-      | Some p -> Some (Filename.concat p i)
-    )
-    | Value v -> Some v
+      | Some p -> Some (p +/ i)
     in
     match value with
     | None -> env     (* Nothing to bind *)
     | Some v -> Env.putenv var_name (calc_new_value var_name mode v env) env
 )
-| _ -> failwith "Not an environment binding"
-;;
+| _ -> failwith "Not an environment binding";;
