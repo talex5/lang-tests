@@ -13,7 +13,7 @@ let copy_current_env () : env =
 ;;
 
 let putenv name value env =
-  Printf.fprintf stderr "Adding: %s=%s\n" name value;
+  (* Printf.fprintf stderr "Adding: %s=%s\n" name value; *)
   M.add name value env
 ;;
 

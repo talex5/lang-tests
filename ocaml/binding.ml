@@ -15,9 +15,12 @@ type env_source =
 
 type exec_type = InPath | InVar;;
 
+type env_binding = {var_name: string; mode: mode; source: env_source};;
+type exec_binding = {exec_type: exec_type; name: string; command: string};;
+
 type binding =
-| EnvironmentBinding of (string * mode * env_source)
-| ExecutableBinding of (exec_type * string * string);;  (* name, command *)
+| EnvironmentBinding of env_binding
+| ExecutableBinding of exec_binding;;
 
 let get_source b =
   let get name = Qdom.get_attribute_opt ("", name) b in
@@ -41,9 +44,9 @@ let parse_binding elem =
   let get_opt name = Qdom.get_attribute_opt ("", name) elem in
   let get name = Qdom.get_attribute ("", name) elem in
   match ZI.tag elem with
-  | Some "environment" -> Some (EnvironmentBinding (get "name", get_mode elem, get_source elem))
-  | Some "executable-in-path" -> Some (ExecutableBinding (InPath, get "name", default "run" (get_opt "command")))
-  | Some "executable-in-var" -> Some (ExecutableBinding (InVar, get "name", default "run" (get_opt "command")))
+  | Some "environment" -> Some (EnvironmentBinding {var_name = get "name"; mode = get_mode elem; source = get_source elem})
+  | Some "executable-in-path" -> Some (ExecutableBinding {exec_type = InPath; name = get "name"; command = default "run" (get_opt "command")})
+  | Some "executable-in-var" -> Some (ExecutableBinding {exec_type = InVar; name = get "name"; command = default "run" (get_opt "command")})
   | Some "overlay" | Some "binding" -> failwith "unsupporting binding type"
   | _ -> None
 ;;
@@ -88,7 +91,7 @@ let prepend name value sep env =
 ;;
 
 let do_env_binding b path env = match b with
-| EnvironmentBinding (name, mode, source) -> (
+| EnvironmentBinding {var_name; mode; source} -> (
     let value = match source with
     | InsertPath i -> (
       match path with
@@ -99,7 +102,7 @@ let do_env_binding b path env = match b with
     in
     match value with
     | None -> env     (* Nothing to bind *)
-    | Some v -> Env.putenv name (calc_new_value name mode v env) env
+    | Some v -> Env.putenv var_name (calc_new_value var_name mode v env) env
 )
 | _ -> failwith "Not an environment binding"
 ;;

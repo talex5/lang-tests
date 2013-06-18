@@ -1,5 +1,5 @@
 type config = {
-  basedirs: Basedir.config;
+  basedirs: Basedir.basedirs;
   stores: string list;
   resource_dir: string;
 };;

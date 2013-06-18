@@ -25,7 +25,7 @@ let do_bindings elem (path : string option) iface (env : env) : env =
   let process env child : env =
     match Binding.parse_binding child with
     | None -> env
-    | Some (Binding.ExecutableBinding (exec_type, name, command)) ->
+    | Some (Binding.ExecutableBinding {Binding.exec_type; Binding.name; Binding.command}) ->
         let new_binding = {iface_uri = iface; exec_type; name; command} in
         {env with exec_bindings = new_binding :: env.exec_bindings}
     | Some (Binding.EnvironmentBinding _ as b) ->

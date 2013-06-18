@@ -8,7 +8,7 @@ open Support;;
 
 let re_path_sep = Str.regexp_string path_sep;;
 
-type config = {
+type basedirs = {
   data: string list;
   cache: string list;
   config: string list;
