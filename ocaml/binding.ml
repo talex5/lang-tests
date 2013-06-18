@@ -21,7 +21,7 @@ type binding =
 | ExecutableBinding of exec_binding;;
 
 let get_source b =
-  let get name = Qdom.get_attribute_opt ("", name) b in
+  let get name = ZI.get_attribute_opt name b in
   match (get "insert", get "value") with
   | (None, None) -> failwith "Missing 'insert' or 'value'"
   | (Some i, None) -> InsertPath i
