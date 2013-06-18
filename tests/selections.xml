@@ -27,6 +27,8 @@
 	<executable-in-var name='TESTUTIL' command='test'/>
       </requires>
 
+      <environment xmlns='http://example.com'/>
+
     </command>
 
     <requires interface='http://example.com/lib1.xml'>
@@ -37,7 +39,7 @@
       <environment name='LIB' insert='.' mode='append'/>
     </requires>
 
-    <manifest-digest sha1='456'/>
+    <zi:manifest-digest sha1='456' xmlns:zi='http://zero-install.sourceforge.net/2004/injector/interface'/>
   </selection>
 
   <selection interface="http://example.com/fast.xml" id='fast-1' version='1'>
