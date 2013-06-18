@@ -34,8 +34,7 @@ let get_default_config () =
   }
 ;;
 
-let load_first resource search_path =
-  let rel_path = String.concat Filename.dir_sep resource in
+let load_first rel_path search_path =
   let rec loop = function
     | [] -> None
     | (x::xs) ->
@@ -52,7 +51,3 @@ let save_path rel_path dirs =
   else ();
   path
 ;;
-
-let save_cache_path rel_path config = save_path rel_path config.cache;;
-
-let load_first_config resource config = load_first resource config.config;;

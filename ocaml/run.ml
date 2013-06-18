@@ -10,7 +10,7 @@ let validate_exec_name name =
     failwith ("Invalid name in executable binding: " ^ name)
 
 let ensure_runenv config =
-  let main_dir = Basedir.save_cache_path ("0install.net" +/ "injector") config.Config.basedirs in
+  let main_dir = Basedir.save_path ("0install.net" +/ "injector") config.Config.basedirs.Basedir.cache in
   let runenv = main_dir +/ "runenv.native" in
   if Sys.file_exists runenv then
     ()
@@ -106,7 +106,7 @@ let do_exec_binding config env impls = function
     validate_exec_name name;
 
     (* set up launcher symlink *)
-    let exec_dir = Basedir.save_cache_path ("0install.net" +/ "injector" +/ "executables" +/ name) config.Config.basedirs in
+    let exec_dir = Basedir.save_path ("0install.net" +/ "injector" +/ "executables" +/ name) config.Config.basedirs.Basedir.cache in
     let exec_path = exec_dir ^ Filename.dir_sep ^ name in   (* TODO: windows *)
 
     if not (Sys.file_exists exec_path) then (
