@@ -127,14 +127,12 @@ standardDefault _ = Nothing
 
 doEnvBinding :: Maybe FilePath -> Env -> Binding -> Env
 doEnvBinding mPath env (EnvironmentBinding name mode bindingSource) =
-    let maybeValue = case bindingSource of
-	    Value v -> Just v
-	    InsertPath i -> do path <- mPath
-			       Just $ path </> i
-    in case maybeValue of
-	    Nothing -> env
-	    Just value -> insert name (add value) env
-    where add newValue = case mode of
+    case (mPath, bindingSource) of
+	    (_, Value v) -> use v
+	    (Nothing, InsertPath i) -> env
+	    (Just implPath, InsertPath i) -> use $ implPath </> i
+    where use newValue = insert name (add newValue) env
+          add newValue = case mode of
 	    Replace -> newValue
 	    Add AddMode {pos = whichEnd, defaultValue = def, separator = sep} ->
 		join whichEnd sep oldValue newValue

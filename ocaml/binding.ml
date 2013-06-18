@@ -49,7 +49,8 @@ let parse_binding elem =
   | _ -> None
 ;;
 
-let collect_bindings root =
+(* Return all bindings in document order TODO *)
+let collect_bindings impls root =
   let bindings = ref [] in
 
   (* If node is a binding, add it to bindings. *)
@@ -59,7 +60,10 @@ let collect_bindings root =
 
   (* If node is a dependency, add its bindings. *)
   let process_dep node = match ZI.tag node with
-  | Some "requires" | Some "runner" -> (ZI.iter (process_binding (ZI.get_attribute "interface" node)) node; true)
+  | Some "requires" | Some "runner" ->
+      let dep_iface = ZI.get_attribute "interface" node in
+      if StringMap.mem dep_iface impls then (ZI.iter (process_binding dep_iface) node; true)
+      else true
   | _ -> false in
 
   (* A command contains dependencies and bindings *)
@@ -100,36 +104,26 @@ let calc_new_value name mode value env =
   match mode with
   | Replace -> value
   | Add {pos; default; separator} ->
-    let old_value = match Env.find_opt name env with
-      | Some _ as v -> v                  (* current value of variable *)
-      | None -> match default with
-        | Some _ as d -> d                (* or the specified default *)
-        | None -> get_default name        (* or the standard default *)
-    in
-    match old_value with
-    | None -> value
-    | Some old ->
-      match pos with
+    let add_to old = match pos with
       | Prepend -> value ^ separator ^ old
-      | Append -> old ^ separator ^ value;;
-
-let find_opt key map =
-  try Some (StringMap.find key map)
-  with Not_found -> None
+      | Append -> old ^ separator ^ value in
+    match Env.find_opt name env with
+      | Some v -> add_to v                  (* add to current value of variable *)
+      | None -> match default with
+        | Some d -> add_to d                (* or to the specified default *)
+        | None -> match get_default name with    
+          | Some d -> add_to d              (* or to the standard default *)
+          | None -> value                   (* no old value; use new value directly *)
 ;;
 
 let do_env_binding env impls = function
 | (iface, EnvironmentBinding {var_name; mode; source}) -> (
-    let value = match source with
-    | Value v -> Some v
-    | InsertPath i ->
-      match find_opt iface impls with
-      | None -> None  (* optional, non-selected dependency *)
-      | Some (_, None) -> None  (* a PackageSelection; skip binding *)
-      | Some (_, Some p) -> Some (p +/ i)
-    in
-    match value with
-    | None -> ()     (* Nothing to bind *)
-    | Some v -> Env.putenv var_name (calc_new_value var_name mode v env) env
+    let add value = Env.putenv var_name (calc_new_value var_name mode value env) env in
+    match source with
+    | Value v -> add v
+    | InsertPath i -> match StringMap.find iface impls with
+      | (_, None) -> ()  (* a PackageSelection; skip binding *)
+      | (_, Some p) -> add (p +/ i)
 )
-| _ -> ();
+| _ -> ()
+;;
