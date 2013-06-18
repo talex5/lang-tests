@@ -3,6 +3,7 @@
 import os, sys, subprocess
 from os.path import join
 from xml.sax import saxutils
+import time
 
 from zeroinstall import support
 
@@ -32,5 +33,18 @@ xml = xml.replace('@TESTS', saxutils.escape(my_dir))
 with open('selections-tmp.xml', 'w') as stream:
 	stream.write(xml)
 
-out = subprocess.check_call([launcher, './selections-tmp.xml', 'user-arg'])
+expected = b'/fast\n--fastest\n--arg-to-fast\n/prog.fst\n--arg-to-prog\n-X1\n-Y1\n-X2\n-Y2\n-X3\n-Y3\nuser-arg\n--run arg-to-util\n--test arg-to-test-util\n'
+
+def run():
+	return subprocess.check_output([launcher, './selections-tmp.xml', 'user-arg'])
+
+n = 10
+actual = run()
+assert actual == expected, actual
+t1 = time.time()
+for x in range(n):
+	run()
+t2 = time.time()
+
+print("%s took %d ms" % (launcher, (t2 - t1) * 1000 / n))
 #print(out.decode('utf-8'))

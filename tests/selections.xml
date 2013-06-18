@@ -4,7 +4,7 @@
   interface="http://example.com/prog.xml"
   command="run">
 
-  <selection interface="http://example.com/prog.xml" id='main-1'>
+  <selection interface="http://example.com/prog.xml" id='main-1' version='1'>
     <environment name='prog' insert='.' mode='replace'/>
     <command name='run' path='prog.fst'>
       <environment name='libs' insert='.' mode='prepend'/>
@@ -40,18 +40,18 @@
     <manifest-digest sha1='456'/>
   </selection>
 
-  <selection interface="http://example.com/fast.xml" id='fast-1'>
+  <selection interface="http://example.com/fast.xml" id='fast-1' version='1'>
     <command name='run' path='fast'>
       <arg>--fastest</arg>
     </command>
     <manifest-digest sha1='123'/>
   </selection>
 
-  <selection interface='http://example.com/lib1.xml' id='package:lib1'/>
-  <selection interface='http://example.com/lib2.xml' id='/root/lib2'/>
-  <selection interface='http://example.com/lib3.xml' id='/root/lib3'/>
+  <selection interface='http://example.com/lib1.xml' id='package:lib1' version='1'/>
+  <selection interface='http://example.com/lib2.xml' id='/root/lib2' version='1'/>
+  <selection interface='http://example.com/lib3.xml' id='/root/lib3' version='1'/>
 
-  <selection interface='http://example.com/util.xml' id='util' local-path='@TESTS'>
+  <selection interface='http://example.com/util.xml' id='util' local-path='@TESTS' version='1'>
     <command name='run' path='util.sh'>
       <arg>--run</arg>
     </command>
