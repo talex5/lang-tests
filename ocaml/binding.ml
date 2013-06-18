@@ -95,11 +95,6 @@ let get_default name = match name with
   | _ -> None
 ;;
 
-let prepend name value sep env =
-  let old_value = Env.find name env in
-  Env.putenv name (value ^ sep ^ old_value) env
-;;
-
 let calc_new_value name mode value env =
   match mode with
   | Replace -> value
@@ -126,4 +121,9 @@ let do_env_binding env impls = function
       | (_, Some p) -> add (p +/ i)
 )
 | _ -> ()
+;;
+
+let prepend name value separator env =
+  let mode = Add {pos = Prepend; default = None; separator} in
+  Env.putenv name (calc_new_value name mode value env) env
 ;;
