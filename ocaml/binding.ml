@@ -49,12 +49,40 @@ let parse_binding elem =
   | _ -> None
 ;;
 
-(*
-let do_binding b env = match source with
-| InsertPath path -> failwith "insert not supported"
-| Value value -> update_env mode value env
+let collect_bindings root =
+  let bindings = ref [] in
+
+  (* If node is a binding, add it to bindings. *)
+  let process_binding iface node = match parse_binding node with
+  | None -> ()
+  | Some binding -> bindings := (iface, binding) :: !bindings in
+
+  (* If node is a dependency, add its bindings. *)
+  let process_dep node = match ZI.tag node with
+  | Some "requires" | Some "runner" -> (ZI.iter (process_binding (ZI.get_attribute "interface" node)) node; true)
+  | _ -> false in
+
+  (* A command contains dependencies and bindings *)
+  let process_command_child iface node =
+    if process_dep node then ()
+    else process_binding iface node in
+  
+  (* A selection contains commands, dependencies and bindings *)
+  let process_sel_child iface node = match ZI.tag node with
+  | Some "command" -> ZI.iter (process_command_child iface) node
+  | _ ->
+      if process_dep node then ()
+      else process_binding iface node in
+
+  let process_sel node =
+    let iface = ZI.get_attribute "interface" node in
+    ZI.iter (process_sel_child iface) node
+  in
+  
+  ZI.iter_with_name process_sel root "selection";
+
+  !bindings
 ;;
-*)
 
 let get_default name = match name with
   | "PATH" -> Some "/bin:/usr/bin"
@@ -85,17 +113,23 @@ let calc_new_value name mode value env =
       | Prepend -> value ^ separator ^ old
       | Append -> old ^ separator ^ value;;
 
-let do_env_binding b path env = match b with
-| EnvironmentBinding {var_name; mode; source} -> (
+let find_opt key map =
+  try Some (StringMap.find key map)
+  with Not_found -> None
+;;
+
+let do_env_binding env impls = function
+| (iface, EnvironmentBinding {var_name; mode; source}) -> (
     let value = match source with
     | Value v -> Some v
     | InsertPath i ->
-      match path with
-      | None -> None  (* a PackageSelection; skip binding *)
-      | Some p -> Some (p +/ i)
+      match find_opt iface impls with
+      | None -> None  (* optional, non-selected dependency *)
+      | Some (_, None) -> None  (* a PackageSelection; skip binding *)
+      | Some (_, Some p) -> Some (p +/ i)
     in
     match value with
-    | None -> env     (* Nothing to bind *)
+    | None -> ()     (* Nothing to bind *)
     | Some v -> Env.putenv var_name (calc_new_value var_name mode v env) env
 )
-| _ -> failwith "Not an environment binding";;
+| _ -> ();

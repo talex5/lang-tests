@@ -1,32 +1,40 @@
-module M = Map.Make(String);;
-
-type env = string M.t;;
+type env = (string, string) Hashtbl.t;;
 
 let re_equals = Str.regexp_string "=";;
 
 let copy_current_env () : env =
-  let parse_env env line =
+  let env = Hashtbl.create 1000 in
+
+  let parse_env line =
     match Str.bounded_split_delim re_equals line 2 with
-    | [key; value] -> M.add key value env
+    | [key; value] -> Hashtbl.replace env key value
     | _ -> failwith (Printf.sprintf "Invalid environment mapping '%s'" line)
-  in Array.fold_left parse_env M.empty (Unix.environment ())
+  in
+  
+  Array.iter parse_env (Unix.environment ());
+
+  env
 ;;
 
 let putenv name value env =
   (* Printf.fprintf stderr "Adding: %s=%s\n" name value; *)
-  M.add name value env
+  Hashtbl.replace env name value
 ;;
 
 let find name env =
-  M.find name env
+  Hashtbl.find env name
 ;;
 
 let find_opt name env =
-  try Some (M.find name env)
+  try Some (Hashtbl.find env name)
   with Not_found -> None
 ;;
 
 let to_array env =
-  let to_item (key, value) = key ^ "=" ^ value in
-  Array.of_list (List.map to_item (M.bindings env))
+  let len = Hashtbl.length env in
+  let arr = Array.make len "" in
+  let item_to_array key value i = (arr.(i) <- key ^ "=" ^ value; i + 1) in
+  let check_len = Hashtbl.fold item_to_array env 0 in
+  assert (len == check_len);
+  arr
 ;;
