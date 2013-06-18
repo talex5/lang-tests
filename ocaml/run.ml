@@ -6,7 +6,7 @@ type exec_binding = {
   exec_type: Binding.exec_type;
   name: string;
   command: string;
-} ;;
+};;
 
 type env = {
   vars: Env.env;

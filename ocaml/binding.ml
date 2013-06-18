@@ -9,13 +9,11 @@ type mode =
   | Replace;;
 
 type env_source =
-  | InsertPath of string
-  | Value of string
-;;
+  | InsertPath of filepath
+  | Value of string;;
 
 type exec_type = InPath | InVar;;
-
-type env_binding = {var_name: string; mode: mode; source: env_source};;
+type env_binding = {var_name: varname; mode: mode; source: env_source};;
 type exec_binding = {exec_type: exec_type; name: string; command: string};;
 
 type binding =
@@ -65,6 +63,11 @@ let get_default name = match name with
   | _ -> None
 ;;
 
+let prepend name value sep env =
+  let old_value = Env.find name env in
+  Env.putenv name (value ^ sep ^ old_value) env
+;;
+
 let calc_new_value name mode value env =
   match mode with
   | Replace -> value
@@ -83,11 +86,6 @@ let calc_new_value name mode value env =
       match pos with
       | Prepend -> value ^ separator ^ old
       | Append -> old ^ separator ^ value
-;;
-
-let prepend name value sep env =
-  let old_value = Env.find name env in
-  Env.putenv name (value ^ sep ^ old_value) env
 ;;
 
 let do_env_binding b path env = match b with

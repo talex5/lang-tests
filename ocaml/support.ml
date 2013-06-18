@@ -1,3 +1,6 @@
+type filepath = string;;
+type varname = string;;
+
 let with_open file fn =
   let ch = open_in file in
   let result = try fn ch with exn -> close_in ch; raise exn in
@@ -53,7 +56,7 @@ let getenv name env = match getenv_opt name env with
 ;;
 *)
 
-let (+/) = Filename.concat;;
+let (+/) : filepath -> filepath -> filepath = Filename.concat;;
 
 let rec makedirs path mode =
   try (

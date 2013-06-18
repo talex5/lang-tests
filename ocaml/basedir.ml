@@ -9,9 +9,9 @@ open Support;;
 let re_path_sep = Str.regexp_string path_sep;;
 
 type basedirs = {
-  data: string list;
-  cache: string list;
-  config: string list;
+  data: filepath list;
+  cache: filepath list;
+  config: filepath list;
 };;
 
 let get_path home_var dirs_var = function
