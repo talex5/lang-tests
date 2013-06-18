@@ -44,6 +44,12 @@ module NsQuery :
       (** Apply [fn] to each child node in our namespace with local name [tag] *)
       val map : (element -> 'a) -> element -> string -> 'a list
 
+      (** Call [fn] on each child node in our namespace *)
+      val iter : (element -> unit) -> element -> unit
+
+      (** Call [fn] on each child node in our namespace with local name [tag] *)
+      val iter_with_name : (element -> unit) -> element -> string -> unit
+
       (** Get the value of the non-namespaced attribute [attr].
           Throws an exception if [elem] isn't in our namespace. *)
       val tag : element -> string option
