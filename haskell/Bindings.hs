@@ -127,20 +127,19 @@ standardDefault _ = Nothing
 
 doEnvBinding :: Maybe FilePath -> Env -> Binding -> Env
 doEnvBinding mPath env (EnvironmentBinding name mode bindingSource) =
-	case maybeValue of
-		Nothing -> env
-		Just value -> insert name (add value) env
-	where maybeValue = case bindingSource of
-		    Value v -> Just v
-		    InsertPath i -> case mPath of
-			    Nothing -> Nothing		-- Package implementation
-			    Just p -> Just $ p </> i
-	      add newValue = case mode of
-		    Replace -> newValue
-		    Add AddMode {pos = whichEnd, defaultValue = def, separator = sep} ->
-			    join whichEnd sep oldValue newValue
-			    where oldValue = (Data.Map.lookup name env) `mplus`
-					     def `mplus` (standardDefault name)
+    let maybeValue = case bindingSource of
+	    Value v -> Just v
+	    InsertPath i -> do path <- mPath
+			       Just $ path </> i
+    in case maybeValue of
+	    Nothing -> env
+	    Just value -> insert name (add value) env
+    where add newValue = case mode of
+	    Replace -> newValue
+	    Add AddMode {pos = whichEnd, defaultValue = def, separator = sep} ->
+		join whichEnd sep oldValue newValue
+		where oldValue = (Data.Map.lookup name env) `mplus`
+				 def `mplus` (standardDefault name)
 doEnvBinding _ env _ = env
 
 validateName :: String -> String
