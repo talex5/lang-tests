@@ -165,17 +165,17 @@ ensureLauncher config name = do execDir <- save ("0install.net" </> "injector" <
 
 doExecBindings :: Config -> Selections -> Map InterfaceURI FilePath -> Env -> [(InterfaceURI, Binding)] -> IO Env
 doExecBindings config sels pathMap initEnv bindings = checkRunenv config >> foldM doExecBinding initEnv bindings
-	where doExecBinding :: Env -> (InterfaceURI, Binding) -> IO Env
-	      doExecBinding env (iface, ExecutableBinding bindingType name uncheckedCommandName) =
-	      				do execDir <- ensureLauncher config name
-					   let commandJSON = encode (buildCommand sels env pathMap iface commandName)
-					   let env2 = insert ("0install-runenv-" ++ name) commandJSON env
-					   let env3 = case bindingType of
-						     InVar -> insert name (execDir </> name) env2
-						     InPath -> insert "PATH" newValue env2
-								where oldValue = (Data.Map.lookup "PATH" env2) `mplus`
-										 (standardDefault "PATH")
-								      newValue = join Prepend [searchPathSeparator] oldValue execDir
-					   return env3
-			where commandName = validateName uncheckedCommandName
-	      doExecBinding env _ = return env
+    where doExecBinding :: Env -> (InterfaceURI, Binding) -> IO Env
+	  doExecBinding env (iface, ExecutableBinding bindingType name uncheckedCommandName) =
+	    do execDir <- ensureLauncher config name
+	       let commandJSON = encode (buildCommand sels env pathMap iface commandName)
+	       let env2 = insert ("0install-runenv-" ++ name) commandJSON env
+	       let env3 = case bindingType of
+			     InVar -> insert name (execDir </> name) env2
+			     InPath -> insert "PATH" newValue env2
+				where oldValue = (Data.Map.lookup "PATH" env2) `mplus`
+						 (standardDefault "PATH")
+				      newValue = join Prepend [searchPathSeparator] oldValue execDir
+	       return env3
+	    where commandName = validateName uncheckedCommandName
+	  doExecBinding env _ = return env
