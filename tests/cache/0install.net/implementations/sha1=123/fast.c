@@ -1,3 +1,5 @@
+#include <sys/wait.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,10 +14,19 @@ int main(int argc, char **argv) {
 
 	fflush(stdout);
 
-	if (system("util arg-to-util") || system("$TESTUTIL arg-to-test-util")) {
-		fprintf(stderr, "util failed");
+	int child;
+
+	child = fork();
+	if (child == 0) {
+		char *child_args[] = {"util", "arg-to-util", NULL};
+		execvp("util", child_args);
+		_exit(1);
+	}
+	if (child != waitpid(child, NULL, 0)) {
 		return 1;
 	}
 
-	return 0;
+	char *new_args[] = {getenv("TESTUTIL"), "arg-to-test-util", NULL};
+	execvp(new_args[0], new_args);
+	return 1;
 }
