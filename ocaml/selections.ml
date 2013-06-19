@@ -44,11 +44,3 @@ let get_path stores elem =
   | LocalSelection path -> Some path
   | CacheSelection digests -> Some (Stores.lookup_any digests stores)
 ;;
-
-let get_command name elem =
-  let is_command node = ((ZI.tag node = Some "command") && (ZI.get_attribute "name" node = name)) in
-  let command_elem =
-    try Qdom.find is_command elem
-    with Not_found -> failwith ("No <command> with name '" ^ name ^ "'")
-  in
-  Command.make command_elem;;

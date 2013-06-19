@@ -96,4 +96,5 @@ getCommandElement name (Selection _ selElem) = commandElement
 
 getRunnerElement :: Element -> Maybe Element
 getRunnerElement commandElem = filterChildName isRunner commandElem
-	where isRunner qname = (qURI qname) == Just xmlns_feed && (qName qname) == "runner"
+	where isRunner (QName { qName = "runner", qURI = Just uri }) = uri == xmlns_feed
+	      isRunner _ = False
