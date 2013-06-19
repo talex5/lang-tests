@@ -21,9 +21,9 @@ let get_digests elem =
   ZI.fold_left extract_digests [] elem "manifest-digest";;
 
 let make_selection elem =
-  let source = (match Qdom.get_attribute_opt ("", "local-path") elem with
+  let source = (match ZI.get_attribute_opt "local-path" elem with
   | Some path -> LocalSelection path
-  | None -> let id = Qdom.get_attribute ("", "id") elem in
+  | None -> let id = ZI.get_attribute "id" elem in
     if Str.string_match re_initial_slash id 0 then
       LocalSelection id   (* Backwards compatibility *)
     else if Str.string_match re_package id 0 then
@@ -31,7 +31,7 @@ let make_selection elem =
     else
       CacheSelection (match get_digests elem with
       | [] ->
-        let id = Qdom.get_attribute ("", "id") elem in
+        let id = ZI.get_attribute "id" elem in
         raise (InvalidSelections ("Implementation '" ^ id ^ "' has no digests"))
       | digests -> digests
       )

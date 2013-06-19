@@ -42,19 +42,6 @@ let parse_file path =
   try with_open path (fun ch -> parse_input (Xmlm.make_input (`Channel ch)))
   with InvalidXML msg -> raise (InvalidXML(msg ^ " in " ^ path))
 
-let get_attribute attr elem = try
-    List.assoc attr elem.attrs
-  with
-    Not_found ->
-      let (ans, aname) = attr in
-      let (ens, ename) = elem.tag in
-      failwith ("Missing attribute {" ^ ans ^ "}" ^ aname ^ " on {" ^ ens ^ "}" ^ ename);;
-
-let get_attribute_opt attr elem = try
-    Some (List.assoc attr elem.attrs)
-  with
-    Not_found -> None
-
 (** Helper functions. *)
 
 let find pred node = List.find pred node.child_nodes;;

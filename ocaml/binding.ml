@@ -30,7 +30,7 @@ let get_source b =
 ;;
 
 let get_mode b =
-  let get name = Qdom.get_attribute_opt ("", name) b in
+  let get name = ZI.get_attribute_opt name b in
   match default "prepend" (get "mode") with
   | "prepend" -> Add {pos = Prepend; default = get "default"; separator = default path_sep (get "separator")}
   | "append" -> Add {pos = Append; default = get "default"; separator = default path_sep (get "separator")}
@@ -39,8 +39,8 @@ let get_mode b =
 ;;
 
 let parse_binding elem =
-  let get_opt name = Qdom.get_attribute_opt ("", name) elem in
-  let get name = Qdom.get_attribute ("", name) elem in
+  let get_opt name = ZI.get_attribute_opt name elem in
+  let get name = ZI.get_attribute name elem in
   match ZI.tag elem with
   | Some "environment" -> Some (EnvironmentBinding {var_name = get "name"; mode = get_mode elem; source = get_source elem})
   | Some "executable-in-path" -> Some (ExecutableBinding {exec_type = InPath; name = get "name"; command = default "run" (get_opt "command")})

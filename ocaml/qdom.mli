@@ -19,11 +19,6 @@ val parse_input : Xmlm.input -> element
 (** @raise InvalidXML if the XML is not well formed. *)
 val parse_file : string -> element
 
-(** {2 Accessing the tree} *)
-
-val get_attribute : Xmlm.name -> element -> string
-val get_attribute_opt : Xmlm.name -> element -> string option
-
 (** {2 Helper functions} *)
 
 val find : (element -> bool) -> element -> element

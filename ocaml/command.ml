@@ -33,8 +33,8 @@ let get_args elem env =
     | _ -> args in
     List.fold_left process [] (elem.Qdom.child_nodes)
   and expand_foreach node env =
-    let item_from = Qdom.get_attribute ("", "item-from") node in
-    let separator = default path_sep (Qdom.get_attribute_opt ("", "separator") node) in
+    let item_from = ZI.get_attribute "item-from" node in
+    let separator = default path_sep (ZI.get_attribute_opt "separator" node) in
     match Env.find_opt item_from env with
     | None -> []
     | Some source ->
