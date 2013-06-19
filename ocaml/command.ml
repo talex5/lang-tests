@@ -49,8 +49,7 @@ let get_args elem env =
 ;;
 
 let get_runner elem =
-  let get_runner runner = runner in
-  match ZI.map get_runner elem "runner" with
+  match ZI.map (fun a -> a) elem "runner" with
     | [] -> None
     | [runner] -> Some runner
     | _ -> failwith "Multiple runners!"
@@ -94,6 +93,7 @@ let rec build_command impls command_iface command_name env : string list =
         args
     )
   | Some runner ->
-      let runner_args = get_args (Runner.get_elem runner) env in
-      (build_command impls (Runner.get_interface runner) (Runner.get_command_name runner) env) @ runner_args @ args
+      let runner_args = get_args runner env in
+      let runner_command_name = default "run" (ZI.get_attribute_opt "command" runner) in
+      (build_command impls (ZI.get_attribute "interface" runner) runner_command_name env) @ runner_args @ args
 ;;
