@@ -7,6 +7,7 @@
   <selection interface="http://example.com/prog.xml" id='main-1' version='1'>
     <environment name='prog' insert='.' mode='replace'/>
     <command name='run' path='prog.fst'>
+      <environment name='FAST_OPTIONS' value='ONE' mode='append'/>
       <environment name='libs' insert='.' mode='prepend'/>
       <runner interface='http://example.com/fast.xml'>
 	<environment name='libs' insert='.' mode='prepend'/>
@@ -19,6 +20,7 @@
       </for-each>
 
       <requires interface='http://example.com/lib3.xml'>
+	<environment name='FAST_OPTIONS' value='TWO' mode='append'/>
 	<environment name='req-in-command' insert='lib3.so' mode='append'/>
       </requires>
 
@@ -54,6 +56,7 @@
   <selection interface='http://example.com/lib3.xml' id='/root/lib3' version='1'/>
 
   <selection interface='http://example.com/util.xml' id='util' local-path='@TESTS' version='1'>
+    <environment name='FAST_OPTIONS' value='THREE' mode='append'/>
     <command name='run' path='util.sh'>
       <arg>--run</arg>
     </command>

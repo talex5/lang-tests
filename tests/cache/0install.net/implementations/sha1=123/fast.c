@@ -12,6 +12,8 @@ int main(int argc, char **argv) {
 		puts(last_slash == NULL ? argv[i] : last_slash);
 	}
 
+	puts(getenv("FAST_OPTIONS"));
+
 	fflush(stdout);
 
 	int child;
