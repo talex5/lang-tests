@@ -1,4 +1,4 @@
-all: test_ocaml test_haskell
+all: test_ocaml test_haskell test_python
 
 ocaml:
 	make -C ../ocaml
@@ -11,3 +11,6 @@ haskell:
 
 test_haskell: haskell
 	./test_launcher.py ../haskell/runsels
+
+test_python:
+	./test_launcher.py ../python/runsels.py
