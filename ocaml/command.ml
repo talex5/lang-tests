@@ -41,8 +41,12 @@ let get_args elem env =
         let rec loop = function
           | [] -> []
           | x::xs ->
-              let () = Env.putenv "item" x env in   (* TODO: undo *)
+              let old = Env.find_opt "item" env in
+              let () = Env.putenv "item" x env in
               let new_args = get_args_loop node in
+              let () = match old with
+              | None -> ()
+              | Some v -> Env.putenv "item" v env in
               new_args @ (loop xs) in
         loop (Str.split_delim (Str.regexp_string separator) source)
   in get_args_loop elem

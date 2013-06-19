@@ -49,7 +49,7 @@ let parse_binding elem =
   | _ -> None
 ;;
 
-(* Return all bindings in document order TODO *)
+(* Return all bindings in document order *)
 let collect_bindings impls root =
   let bindings = ref [] in
 
