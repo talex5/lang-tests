@@ -85,7 +85,7 @@ let collect_bindings impls root =
   
   ZI.iter_with_name process_sel root "selection";
 
-  !bindings
+  List.rev !bindings
 ;;
 
 let get_default name = match name with

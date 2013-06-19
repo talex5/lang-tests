@@ -27,11 +27,11 @@ let expand_arg template env =
 (* Return a list of string arguments by expanding <arg> and <for-each> children of [elem] *)
 let get_args elem env =
   let rec get_args_loop elem =
-    let process args child = match ZI.tag child with
+    let process child args = match ZI.tag child with
     | Some "arg" -> (expand_arg child.Qdom.last_text_inside env) :: args
     | Some "for-each" -> (expand_foreach child env) @ args
     | _ -> args in
-    List.fold_left process [] (elem.Qdom.child_nodes)
+    List.fold_right process (elem.Qdom.child_nodes) []
   and expand_foreach node env =
     let item_from = ZI.get_attribute "item-from" node in
     let separator = default path_sep (ZI.get_attribute_opt "separator" node) in
@@ -41,7 +41,7 @@ let get_args elem env =
         let rec loop = function
           | [] -> []
           | x::xs ->
-              let () = Env.putenv "item" x env in   (* undo *)
+              let () = Env.putenv "item" x env in   (* TODO: undo *)
               let new_args = get_args_loop node in
               new_args @ (loop xs) in
         loop (Str.split_delim (Str.regexp_string separator) source)

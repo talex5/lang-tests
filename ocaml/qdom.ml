@@ -24,7 +24,7 @@ let rec parse_nodes i prev_siblings prev_text =
         let new_node = {
           tag = tag;
           attrs = attrs;
-          child_nodes = child_nodes;
+          child_nodes = List.rev child_nodes;
           text_before = prev_text;
           last_text_inside = trailing_text;
         } in parse_nodes i (new_node :: prev_siblings) ""
@@ -68,7 +68,7 @@ module NsQuery (Ns : NsType) = struct
       | [] -> []
       | (node::xs) ->
           if node.tag = (Ns.ns, tag)
-          then (fn node) :: loop xs
+          then let result = fn node in result :: loop xs
           else loop xs in
     loop node.child_nodes
   ;;

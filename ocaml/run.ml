@@ -55,7 +55,7 @@ let make_selection_map stores sels =
   in ZI.fold_left add_selection StringMap.empty sels "selection"
 ;;
 
-let execute_selections sels (args:string list) config =
+let execute_selections sels args config =
   let env = Env.copy_current_env () in
   let impls = make_selection_map config.Config.stores sels in
   let bindings = Binding.collect_bindings impls sels in
