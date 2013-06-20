@@ -12,6 +12,9 @@ import Bindings
 
 type Arg = String
 
+-- | Execute the given selections with the given arguments.
+--   'Config' is used to locate the cached implementations and
+--   to create the launchers.
 executeSelections :: Selections -> [Arg] -> Config -> IO ()
 executeSelections sels userArgs config = do
 		origEnv <- getEnvironment

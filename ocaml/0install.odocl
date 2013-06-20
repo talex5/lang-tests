@@ -2,10 +2,11 @@ apps
 basedir
 binding
 command
+config
 constants
+env
 qdom
 run
-runner
 runsels
 selections
 stores
