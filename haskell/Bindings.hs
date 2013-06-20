@@ -52,67 +52,29 @@ processExecutableBinding bindingType bindingElem = ExecutableBinding bindingType
 	where name = requireAttr "name" bindingElem
 	      commandName = fromMaybe "run" (findAttr (mkQName "command") bindingElem)
 
-processBinding :: String -> Element -> Binding
-processBinding "environment" = processEnvironmentBinding
-processBinding "executable-in-path" = processExecutableBinding InPath
-processBinding "executable-in-var" = processExecutableBinding InVar
-processBinding n = error $ "Unknown binding type: " ++ n
-
-isDependency :: String -> Bool
-isDependency "requires" = True
-isDependency "restricts" = True
-isDependency "runner" = True
-isDependency _ = False
-
-isBinding :: String -> Bool
-isBinding "environment"  = True
-isBinding "executable-in-path" = True
-isBinding "executable-in-var" = True
-isBinding _ = False
-
--- Get bindings within a dependency
-getBindingsFromDep :: Element -> [(InterfaceURI, Binding)]
-getBindingsFromDep dep = do
-				(name, child) <- ziChildren dep
-				if isBinding (name) then
-					[(iface, processBinding name child)]
-				else
-					[]
-			where iface = requireAttr "interface" dep
-
--- Get bindings within a command
-getBindingsFromCommand :: InterfaceURI -> Element -> [(InterfaceURI, Binding)]
-getBindingsFromCommand iface commandElement = do
-				(name, child) <- ziChildren commandElement
-				if isBinding (name) then
-					[(iface, processBinding name child)]
-				else if isDependency name then
-					getBindingsFromDep child
-				else
-					[]
-
--- Get all the bindings in this <selection> in document order
-getBindingsFromSelection :: Element -> [(InterfaceURI, Binding)]
-getBindingsFromSelection sel = do
-				(name, child) <- ziChildren sel
-				if isBinding name then
-					return (iface, processBinding name child)
-				else if isDependency name then
-					getBindingsFromDep child
-				else if name == "command" then
-					getBindingsFromCommand iface child
-				else []
-		where iface = requireAttr "interface" sel
+processBinding :: String -> Element -> [Binding]
+processBinding "environment" e = [processEnvironmentBinding e]
+processBinding "executable-in-path" e = [processExecutableBinding InPath e]
+processBinding "executable-in-var" e = [processExecutableBinding InVar e]
+processBinding _ _ = []
 
 -- Find all the bindings, in document order
 -- Excludes bindings to unselected optional components
 collectBindings :: Selections -> [(InterfaceURI, Binding)]
-collectBindings sels = do
-		sel <- selectionElements
-		(interfaceURI, binding) <- getBindingsFromSelection sel
-		if interfaceURI `member` (selections sels) then [(interfaceURI, binding)]
-		else []  -- Optional dependency which was not selected
-	where selectionElements = filterChildrenName (hasZName "selection") (root sels)
+collectBindings sels = do sel <- filterChildrenName (hasZName "selection") (root sels)
+                          let iface = requireAttr "interface" sel
+                          getBindings True True iface sel
+    where getBindings deps commands iface parent =
+            do (name, child) <- ziChildren parent
+               case name of
+                    "command" | commands -> getBindings True False iface child
+                    x | (x == "requires" || x == "runner") && deps ->
+                             let depIface = requireAttr "interface" child in
+                             if depIface `member` (selections sels)
+                               then getBindings False False depIface child
+                               else []  -- Optional dependency which was not selected
+                    _ -> do binding <- processBinding name child
+                            [(iface, binding)]
 
 join :: WhichEnd -> String -> Maybe String -> String -> String
 join _ _ Nothing new = new
@@ -129,7 +91,7 @@ doEnvBinding :: Maybe FilePath -> Env -> Binding -> Env
 doEnvBinding mPath env (EnvironmentBinding name mode bindingSource) =
     case (mPath, bindingSource) of
 	    (_, Value v) -> use v
-	    (Nothing, InsertPath i) -> env
+	    (Nothing, InsertPath _) -> env
 	    (Just implPath, InsertPath i) -> use $ implPath </> i
     where use newValue = insert name (add newValue) env
           add newValue = case mode of
