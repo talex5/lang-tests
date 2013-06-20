@@ -53,38 +53,21 @@ let parse_binding elem =
 let collect_bindings impls root =
   let bindings = ref [] in
 
-  (* If node is a binding, add it to bindings. *)
-  let process_binding iface node = match parse_binding node with
-  | None -> ()
-  | Some binding -> bindings := (iface, binding) :: !bindings in
+  let rec process ~deps ~commands iface parent =
+    let process_child node =
+      match ZI.tag node with
+      | Some "requires" | Some "runner" when deps ->
+          let dep_iface = ZI.get_attribute "interface" node in
+          if StringMap.mem dep_iface impls then process ~deps:false ~commands:false dep_iface node
+          else ()
+      | Some "command" when commands -> process ~deps:true ~commands:false iface node
+      | _ -> match parse_binding node with
+             | None -> ()
+             | Some binding -> bindings := (iface, binding) :: !bindings in
+    ZI.iter process_child parent in
 
-  (* If node is a dependency, add its bindings. *)
-  let process_dep node = match ZI.tag node with
-  | Some "requires" | Some "runner" ->
-      let dep_iface = ZI.get_attribute "interface" node in
-      if StringMap.mem dep_iface impls then (ZI.iter (process_binding dep_iface) node; true)
-      else true
-  | _ -> false in
-
-  (* A command contains dependencies and bindings *)
-  let process_command_child iface node =
-    if process_dep node then ()
-    else process_binding iface node in
-  
-  (* A selection contains commands, dependencies and bindings *)
-  let process_sel_child iface node = match ZI.tag node with
-  | Some "command" -> ZI.iter (process_command_child iface) node
-  | _ ->
-      if process_dep node then ()
-      else process_binding iface node in
-
-  let process_sel node =
-    let iface = ZI.get_attribute "interface" node in
-    ZI.iter (process_sel_child iface) node
-  in
-  
+  let process_sel node = process ~deps:true ~commands:true (ZI.get_attribute "interface" node) node in 
   ZI.iter_with_name process_sel root "selection";
-
   List.rev !bindings
 ;;
 
