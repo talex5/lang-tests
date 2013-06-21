@@ -7,6 +7,7 @@ type element = {
   mutable child_nodes: element list;
   mutable text_before: string;        (** The text node immediately before us *)
   mutable last_text_inside: string;   (** The last text node inside us with no following element *)
+  pos: Xmlm.pos;                      (** Location of element in XML *)
 };;
 
 (** {2 Parsing} *)

@@ -6,6 +6,7 @@ type element = {
   mutable child_nodes: element list;
   mutable text_before: string;        (** The text node immediately before us *)
   mutable last_text_inside: string;   (** The last text node inside us with no following element *)
+  pos: Xmlm.pos;                      (** Location of element in XML *)
 };;
 
 (* Parse all elements from here to the next close tag and return those elements *)
@@ -13,6 +14,7 @@ let rec parse_nodes i prev_siblings prev_text =
   if Xmlm.eoi i then
     (prev_siblings, prev_text)
   else
+    let pos = Xmlm.pos i in
     match Xmlm.input i with
       | `Data s -> parse_nodes i prev_siblings (prev_text ^ s)
       | `Dtd _dtd -> parse_nodes i prev_siblings prev_text
@@ -25,6 +27,7 @@ let rec parse_nodes i prev_siblings prev_text =
           child_nodes = List.rev child_nodes;
           text_before = prev_text;
           last_text_inside = trailing_text;
+          pos;
         } in parse_nodes i (new_node :: prev_siblings) ""
       );;
 
@@ -46,7 +49,8 @@ let find pred node = List.find pred node.child_nodes;;
 
 let show_brief elem =
   let (_ns, name) = elem.tag in
-  "<" ^ name ^ ">"
+  let (line, col) = elem.pos in
+  Printf.sprintf "<%s> at [%d:%d]" name line col
 ;;
 
 module type NsType = sig
