@@ -23,6 +23,9 @@ val parse_file : string -> element
 
 val find : (element -> bool) -> element -> element
 
+(** [raise_elem "Problem with " elem] raises a [Safe_exception] with the message "Problem with <element> at ..." *)
+val raise_elem : string -> element -> 'a
+
 module type NsType = sig val ns : string end
 
 module NsQuery :
@@ -48,5 +51,8 @@ module NsQuery :
       (** Get the value of the non-namespaced attribute [attr].
           Throws an exception if [elem] isn't in our namespace. *)
       val tag : element -> string option
+
+      (** Throws [Safe_exception] if element does not have the expected name and namespace. *)
+      val check_tag : string -> element -> unit
       ;;
     end;;

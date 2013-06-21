@@ -44,13 +44,15 @@ let parse_input source_name i = try (
 
 let parse_file path =
   try with_open path (fun ch -> parse_input path (Xmlm.make_input (`Channel ch)))
-  with Safe_exception _ as ex -> reraise_with_context ex ("... parsing XML document " ^ path)
+  with
+  | Safe_exception _ as ex -> reraise_with_context ex ("... parsing XML document " ^ path)
+  | Sys_error msg -> raise_safe ("Error parsing XML document '" ^ path ^ "': " ^ msg)
 
 (** Helper functions. *)
 
 let find pred node = List.find pred node.child_nodes;;
 
-let show_brief elem =
+let show_with_loc elem =
   let (_ns, name) = elem.tag in
   let (line, col) = elem.pos in
   Printf.sprintf "<%s> at %s:%d:%d" name elem.source_name line col
@@ -59,6 +61,9 @@ let show_brief elem =
 module type NsType = sig
   val ns : string;;
 end;;
+
+let raise_elem msg elem =
+  raise_safe (msg ^ (show_with_loc elem))
 
 module NsQuery (Ns : NsType) = struct
   (** Return the localName part of this element's tag.
@@ -81,14 +86,14 @@ module NsQuery (Ns : NsType) = struct
   let check_ns elem =
     let (ns, _) = elem.tag in
     if ns = Ns.ns then ()
-    else raise_safe ("Element " ^ (show_brief elem) ^ " not in namespace " ^ Ns.ns)
+    else raise_elem ("Element not in namespace " ^ Ns.ns ^ ":") elem
   ;;
 
   let get_attribute attr elem = try
       check_ns elem;
       List.assoc ("", attr) elem.attrs
     with
-      Not_found -> raise_safe ("Missing attribute '" ^ attr ^ "' on " ^ (show_brief elem))
+      Not_found -> raise_elem ("Missing attribute '" ^ attr ^ "' on ") elem
   ;;
 
   let get_attribute_opt attr elem = try
@@ -114,4 +119,10 @@ module NsQuery (Ns : NsType) = struct
     let fn2 m elem = if elem.tag = (Ns.ns, tag) then fn m elem else m in
     List.fold_left fn2 init node.child_nodes
   ;;
+
+  let check_tag expected elem =
+    let (ns, name) = elem.tag in
+    if ns <> Ns.ns then raise_elem ("Element not in namespace " ^ Ns.ns ^ ":") elem
+    else if name <> expected then raise_elem ("Expected <" ^ expected ^ "> but found ") elem
+    else ()
 end;;

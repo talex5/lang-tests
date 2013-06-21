@@ -4,13 +4,14 @@ open Constants;;
 let get_command name elem =
   let is_command node = ((ZI.tag node = Some "command") && (ZI.get_attribute "name" node = name)) in
   try Qdom.find is_command elem
-  with Not_found -> failwith ("No <command> with name '" ^ name ^ "'")
+  with Not_found -> Qdom.raise_elem ("No <command> with name '" ^ name ^ "' in ") elem
 ;;
 
 let re_template = Str.regexp ("\\$\\(\\$\\|\\([a-zA-Z_][a-zA-Z0-9_]*\\)\\|{[^}]*}\\)")
 
 (* Perform $ substitutions on [template], taking values from [env] *)
-let expand_arg template env =
+let expand_arg arg env =
+  let template = arg.Qdom.last_text_inside in
   let remove_braces s =
     let l = String.length s in
     if s.[0] = '{' then (
@@ -19,7 +20,7 @@ let expand_arg template env =
     ) else s; in
   let expand s = match (Str.matched_group 1 s) with
   | "$" -> "$"
-  | "" | "{}" -> failwith ("Error: empty variable name in template: " ^ template)
+  | "" | "{}" -> Qdom.raise_elem ("Empty variable name in template '" ^ template ^ "' in ") arg
   | m -> Env.find (remove_braces m) env in
   Str.global_substitute re_template expand template
 ;;
@@ -28,7 +29,7 @@ let expand_arg template env =
 let get_args elem env =
   let rec get_args_loop elem =
     let process child args = match ZI.tag child with
-    | Some "arg" -> (expand_arg child.Qdom.last_text_inside env) :: args
+    | Some "arg" -> (expand_arg child env) :: args
     | Some "for-each" -> (expand_foreach child env) @ args
     | _ -> args in
     List.fold_right process (elem.Qdom.child_nodes) []
@@ -56,13 +57,13 @@ let get_runner elem =
   match ZI.map (fun a -> a) elem "runner" with
     | [] -> None
     | [runner] -> Some runner
-    | _ -> failwith "Multiple runners!"
+    | _ -> Qdom.raise_elem "Multiple <runner>s in " elem
 ;;
 
 (* Build up the argv array to execute this command *)
 let rec build_command impls command_iface command_name env : string list =
   try
-    let (command_sel, command_impl_path) = StringMap.find command_iface impls in
+    let (command_sel, command_impl_path) = Selections.find_ex command_iface impls in
     let command = get_command command_name command_sel in
     let command_rel_path = ZI.get_attribute_opt "path" command in
 
@@ -75,7 +76,7 @@ let rec build_command impls command_iface command_name env : string list =
             match command_impl_path with
             | None -> (   (* PackageSelection *)
               if (Filename.is_relative  command_rel_path) then
-                failwith ("Relative path in package - TODO")
+                failwith ("Relative path in package - TODO")  (* TODO *)
               else
                 command_rel_path      
             )
@@ -83,7 +84,7 @@ let rec build_command impls command_iface command_name env : string list =
               if (Filename.is_relative command_rel_path) then
                 Filename.concat dir command_rel_path
               else
-                failwith ("Absolute path in <command>: " ^ command_rel_path)
+                Qdom.raise_elem ("Absolute path '" ^ command_rel_path ^ "' in ") command
             )
           in
             command_path :: command_args
@@ -93,7 +94,7 @@ let rec build_command impls command_iface command_name env : string list =
     match get_runner command with
     | None -> (
         if command_rel_path = None then
-          failwith ("Missing path on <command> with no <runner> in " ^ command_iface)
+          Qdom.raise_elem "Missing 'path' on command with no <runner>: " command
         else
           args
       )

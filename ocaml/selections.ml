@@ -1,12 +1,11 @@
 open Constants;;
+open Support;;
 
 type impl_source =
   | CacheSelection of Stores.digest list
   | LocalSelection of string
   | PackageSelection
 ;;
-
-exception InvalidSelections of string;;
 
 let re_initial_slash = Str.regexp "^/";;
 let re_package = Str.regexp "^package:";;
@@ -32,10 +31,15 @@ let make_selection elem =
       CacheSelection (match get_digests elem with
       | [] ->
         let id = ZI.get_attribute "id" elem in
-        raise (InvalidSelections ("Implementation '" ^ id ^ "' has no digests"))
+        Qdom.raise_elem ("No digests found in selection '" ^ id ^ "': ") elem
       | digests -> digests
       )
   ) in source
+;;
+
+let find_ex iface impls =
+  try StringMap.find iface impls
+  with Not_found -> raise_safe ("Missing a selection for interface '" ^ iface ^ "'")
 ;;
 
 let get_path stores elem =
@@ -43,4 +47,10 @@ let get_path stores elem =
   | PackageSelection -> None
   | LocalSelection path -> Some path
   | CacheSelection digests -> Some (Stores.lookup_any digests stores)
+;;
+
+let load_selections path =
+  let root = Qdom.parse_file path in
+  ZI.check_tag "selections" root;
+  root
 ;;

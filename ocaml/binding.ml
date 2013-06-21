@@ -23,10 +23,10 @@ type binding =
 let get_source b =
   let get name = ZI.get_attribute_opt name b in
   match (get "insert", get "value") with
-  | (None, None) -> failwith "Missing 'insert' or 'value'"
+  | (None, None) -> Qdom.raise_elem "Missing 'insert' or 'value' on " b
   | (Some i, None) -> InsertPath i
   | (None, Some v) -> Value v
-  | (Some _, Some _) -> failwith "Can't use 'insert' and 'value' together"
+  | (Some _, Some _) -> Qdom.raise_elem "Can't use 'insert' and 'value' together on " b
 ;;
 
 let get_mode b =
@@ -35,7 +35,7 @@ let get_mode b =
   | "prepend" -> Add {pos = Prepend; default = get "default"; separator = default path_sep (get "separator")}
   | "append" -> Add {pos = Append; default = get "default"; separator = default path_sep (get "separator")}
   | "replace" -> Replace
-  | x -> failwith("Unknown <environment> mode: " ^ x)
+  | x -> Qdom.raise_elem ("Unknown mode '" ^ x ^ "' on ") b
 ;;
 
 let parse_binding elem =
@@ -45,7 +45,7 @@ let parse_binding elem =
   | Some "environment" -> Some (EnvironmentBinding {var_name = get "name"; mode = get_mode elem; source = get_source elem})
   | Some "executable-in-path" -> Some (ExecutableBinding {exec_type = InPath; name = get "name"; command = default "run" (get_opt "command")})
   | Some "executable-in-var" -> Some (ExecutableBinding {exec_type = InVar; name = get "name"; command = default "run" (get_opt "command")})
-  | Some "overlay" | Some "binding" -> failwith "unsupporting binding type"
+  | Some "overlay" | Some "binding" -> Qdom.raise_elem "Unsupporting binding type: " elem
   | _ -> None
 ;;
 
