@@ -12,8 +12,14 @@ let () =
         | None -> app_or_sels
         | Some app_path -> app_path +/ "selections.xml" in
         let sels = Qdom.parse_file sels_path in
-        Run.execute_selections sels args config
+        try Run.execute_selections sels args config
+        with Safe_exception _ as ex -> reraise_with_context ex ("... running selections " ^ sels_path)
   with
+  | Safe_exception (msg, context) ->
+      Printf.eprintf "%s\n" msg;
+      List.iter (Printf.eprintf "%s\n") (List.rev !context);
+      Printexc.print_backtrace stderr;
+      exit 1
   | ex ->
       output_string stderr (Printexc.to_string ex);
       output_string stderr "\n";

@@ -61,43 +61,45 @@ let get_runner elem =
 
 (* Build up the argv array to execute this command *)
 let rec build_command impls command_iface command_name env : string list =
-  let (command_sel, command_impl_path) = StringMap.find command_iface impls in
-  let command = get_command command_name command_sel in
-  let command_rel_path = ZI.get_attribute_opt "path" command in
+  try
+    let (command_sel, command_impl_path) = StringMap.find command_iface impls in
+    let command = get_command command_name command_sel in
+    let command_rel_path = ZI.get_attribute_opt "path" command in
 
-  (* args for the first command *)
-  let command_args = get_args command env in
-  let args = (match command_rel_path with
-    | None -> command_args
-    | Some command_rel_path ->
-        let command_path =
-          match command_impl_path with
-          | None -> (   (* PackageSelection *)
-            if (Filename.is_relative  command_rel_path) then
-              failwith ("Relative path in package - TODO")
-            else
-              command_rel_path      
-          )
-          | Some dir -> (
-            if (Filename.is_relative command_rel_path) then
-              Filename.concat dir command_rel_path
-            else
-              failwith ("Absolute path in <command>: " ^ command_rel_path)
-          )
-        in
-          command_path :: command_args
-  ) in
+    (* args for the first command *)
+    let command_args = get_args command env in
+    let args = (match command_rel_path with
+      | None -> command_args
+      | Some command_rel_path ->
+          let command_path =
+            match command_impl_path with
+            | None -> (   (* PackageSelection *)
+              if (Filename.is_relative  command_rel_path) then
+                failwith ("Relative path in package - TODO")
+              else
+                command_rel_path      
+            )
+            | Some dir -> (
+              if (Filename.is_relative command_rel_path) then
+                Filename.concat dir command_rel_path
+              else
+                failwith ("Absolute path in <command>: " ^ command_rel_path)
+            )
+          in
+            command_path :: command_args
+    ) in
 
-  (* recursively process our runner, if any *)
-  match get_runner command with
-  | None -> (
-      if command_rel_path = None then
-        failwith ("Missing path on <command> with no <runner> in " ^ command_iface)
-      else
-        args
-    )
-  | Some runner ->
-      let runner_args = get_args runner env in
-      let runner_command_name = default "run" (ZI.get_attribute_opt "command" runner) in
-      (build_command impls (ZI.get_attribute "interface" runner) runner_command_name env) @ runner_args @ args
+    (* recursively process our runner, if any *)
+    match get_runner command with
+    | None -> (
+        if command_rel_path = None then
+          failwith ("Missing path on <command> with no <runner> in " ^ command_iface)
+        else
+          args
+      )
+    | Some runner ->
+        let runner_args = get_args runner env in
+        let runner_command_name = default "run" (ZI.get_attribute_opt "command" runner) in
+        (build_command impls (ZI.get_attribute "interface" runner) runner_command_name env) @ runner_args @ args
+  with Safe_exception _ as ex -> reraise_with_context ex ("... building command for " ^ command_iface)
 ;;

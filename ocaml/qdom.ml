@@ -8,8 +8,6 @@ type element = {
   mutable last_text_inside: string;   (** The last text node inside us with no following element *)
 };;
 
-exception InvalidXML of string;;
-
 (* Parse all elements from here to the next close tag and return those elements *)
 let rec parse_nodes i prev_siblings prev_text =
   if Xmlm.eoi i then
@@ -35,12 +33,12 @@ let parse_input i = try (
   | [root], "" -> root
   | _ -> failwith("Expected single root node in XML")
 ) with Xmlm.Error ((line, col), err) ->
-  raise (InvalidXML (Printf.sprintf "[%d:%d] %s" line col (Xmlm.error_message err)))
+  raise_safe (Printf.sprintf "[%d:%d] %s" line col (Xmlm.error_message err))
 ;;
 
 let parse_file path =
   try with_open path (fun ch -> parse_input (Xmlm.make_input (`Channel ch)))
-  with InvalidXML msg -> raise (InvalidXML(msg ^ " in " ^ path))
+  with Safe_exception _ as ex -> reraise_with_context ex ("... parsing XML document " ^ path)
 
 (** Helper functions. *)
 
@@ -76,14 +74,14 @@ module NsQuery (Ns : NsType) = struct
   let check_ns elem =
     let (ns, _) = elem.tag in
     if ns = Ns.ns then ()
-    else failwith ("Element " ^ (show_brief elem) ^ " not in namespace " ^ Ns.ns)
+    else raise_safe ("Element " ^ (show_brief elem) ^ " not in namespace " ^ Ns.ns)
   ;;
 
   let get_attribute attr elem = try
       check_ns elem;
       List.assoc ("", attr) elem.attrs
     with
-      Not_found -> failwith ("Missing attribute " ^ attr ^ " on " ^ (show_brief elem))
+      Not_found -> raise_safe ("Missing attribute '" ^ attr ^ "' on " ^ (show_brief elem))
   ;;
 
   let get_attribute_opt attr elem = try

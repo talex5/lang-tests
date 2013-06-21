@@ -9,14 +9,12 @@ type element = {
   mutable last_text_inside: string;   (** The last text node inside us with no following element *)
 };;
 
-exception InvalidXML of string
-
 (** {2 Parsing} *)
 
-(** @raise InvalidXML if the XML is not well formed. *)
+(** @raise [Safe_exception] if the XML is not well formed. *)
 val parse_input : Xmlm.input -> element
 
-(** @raise InvalidXML if the XML is not well formed. *)
+(** @raise [Safe_exception] if the XML is not well formed. *)
 val parse_file : string -> element
 
 (** {2 Helper functions} *)

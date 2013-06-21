@@ -40,3 +40,20 @@ let abspath path =
   if path.[0] = '/' then path
   else (Sys.getcwd ()) +/ path
 ;;
+
+(** An error that should be reported to the user without a stack-trace (i.e. it
+ * does not indicate a bug).
+ * The list is an optional list of context strings, outermost first, saying what
+ * we were doing when the exception occured. This list gets extended as the exception
+ * propagates.
+ *)
+exception Safe_exception of (string * string list ref);;
+
+let raise_safe msg = raise (Safe_exception (msg, ref []));;
+
+let reraise_with_context ex context =
+  let () = match ex with
+  | Safe_exception (msg, old_contexts) -> old_contexts := context :: !old_contexts
+  | _ -> Printf.eprintf "warning: Attempt to add note '%s' to non-Safe_exception!" context
+  in raise ex
+;;
