@@ -7,13 +7,14 @@ type element = {
   mutable child_nodes: element list;
   mutable text_before: string;        (** The text node immediately before us *)
   mutable last_text_inside: string;   (** The last text node inside us with no following element *)
+  source_name: Support.filepath;             (** For error messages *)
   pos: Xmlm.pos;                      (** Location of element in XML *)
 };;
 
 (** {2 Parsing} *)
 
 (** @raise [Safe_exception] if the XML is not well formed. *)
-val parse_input : Xmlm.input -> element
+val parse_input : string -> Xmlm.input -> element
 
 (** @raise [Safe_exception] if the XML is not well formed. *)
 val parse_file : string -> element
